@@ -7,5 +7,14 @@ spring:
   config:
     import: optional:configserver:http://localhost:8888
 
+  mail:
+    host: smtp.gmail.com
+    port: 465
+    username: 152512sch@gmail.com
+    password: iaberrorlmilljsr
 
-
+    properties:
+      mail:
+        smtp:
+          ssl:
+            enable: true
