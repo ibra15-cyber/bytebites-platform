@@ -1,0 +1,27 @@
+package com.ibra.orderservice.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Setter
+@Getter
+public class OrderItemDTO {
+
+    // Getters and Setters
+    private Long id;
+    private Long menuItemId;
+    private String itemName;
+    private Integer quantity;
+    private BigDecimal unitPrice;
+    private BigDecimal totalPrice;
+    private String specialInstructions;
+    private LocalDateTime createdAt;
+
+    // Constructors
+    public OrderItemDTO() {}
+
+}
+
