@@ -1,0 +1,15 @@
+<project>
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.ibra</groupId>
+    <artifactId>monorepo-parent</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>eureka-server</module>
+        <module>config-server</module>
+        <module>auth-service</module>
+        <module>api-gateway</module>
+    </modules>
+
+</project>
