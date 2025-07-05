@@ -1,0 +1,89 @@
+graph TB
+    subgraph "External"
+        Client[Client Application]
+        Postman[Postman/API Testing]
+    end
+
+    subgraph "Infrastructure Layer"
+        Eureka[Discovery Server<br/>:8761]
+        Config[Config Server<br/>:8888]
+        Gateway[API Gateway<br/>:8080<br/>JWT Validation]
+    end
+
+    subgraph "Message Broker"
+        Kafka[Kafka/RabbitMQ<br/>:9092/:5672]
+    end
+
+    subgraph "Business Services"
+        Auth[Auth Service<br/>:8081<br/>JWT Creation]
+        Restaurant[Restaurant Service<br/>:8082<br/>CRUD Operations]
+        Order[Order Service<br/>:8083<br/>Order Management]
+        Notification[Notification Service<br/>:8084<br/>Event Processing]
+    end
+
+    subgraph "Data Layer"
+        AuthDB[(Auth Database<br/>H2/PostgreSQL)]
+        RestaurantDB[(Restaurant Database<br/>H2/PostgreSQL)]
+        OrderDB[(Order Database<br/>H2/PostgreSQL)]
+    end
+
+    %% Client connections
+    Client --> Gateway
+    Postman --> Gateway
+
+    %% Infrastructure connections
+    Gateway --> Eureka
+    Config --> Eureka
+    Gateway --> Config
+
+    %% Service registrations
+    Auth --> Eureka
+    Restaurant --> Eureka
+    Order --> Eureka
+    Notification --> Eureka
+
+    %% API Gateway routing
+    Gateway --> Auth
+    Gateway --> Restaurant
+    Gateway --> Order
+    Gateway --> Notification
+
+    %% Service to Config
+    Auth --> Config
+    Restaurant --> Config
+    Order --> Config
+    Notification --> Config
+
+    %% Database connections
+    Auth --> AuthDB
+    Restaurant --> RestaurantDB
+    Order --> OrderDB
+
+    %% Message broker connections
+    Order --> Kafka
+    Notification --> Kafka
+    Restaurant --> Kafka
+
+    %% JWT Flow
+    Gateway -.->|JWT Validation| Auth
+    Gateway -.->|Forward Headers| Restaurant
+    Gateway -.->|Forward Headers| Order
+    Gateway -.->|Forward Headers| Notification
+
+    %% Event Flow
+    Order -.->|OrderPlacedEvent| Kafka
+    Kafka -.->|Consume Event| Notification
+    Kafka -.->|Consume Event| Restaurant
+
+    %% Styling
+    classDef infrastructure fill:#e1f5fe,stroke:#0277bd
+    classDef business fill:#f3e5f5,stroke:#7b1fa2
+    classDef data fill:#e8f5e8,stroke:#388e3c
+    classDef external fill:#fff3e0,stroke:#f57c00
+    classDef messaging fill:#fce4ec,stroke:#c2185b
+
+    class Eureka,Config,Gateway infrastructure
+    class Auth,Restaurant,Order,Notification business
+    class AuthDB,RestaurantDB,OrderDB data
+    class Client,Postman external
+    class Kafka messaging

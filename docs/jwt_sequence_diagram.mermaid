@@ -1,0 +1,79 @@
+sequenceDiagram
+    participant Client
+    participant Gateway as API Gateway<br/>:8080
+    participant Auth as Auth Service<br/>:8081
+    participant Restaurant as Restaurant Service<br/>:8082
+    participant Eureka as Discovery Server<br/>:8761
+
+    Note over Client,Eureka: 1. User Registration & Login Flow
+    
+    Client->>Gateway: POST /auth/register<br/>{username, email, password, role}
+    Gateway->>Eureka: Discover auth-service location
+    Eureka-->>Gateway: Return auth-service URL
+    Gateway->>Auth: Forward registration request
+    Auth->>Auth: Hash password (BCrypt)
+    Auth->>Auth: Save user to database
+    Auth-->>Gateway: Registration successful
+    Gateway-->>Client: 201 Created
+
+    Note over Client,Eureka: 2. JWT Token Generation
+    
+    Client->>Gateway: POST /auth/login<br/>{username, password}
+    Gateway->>Auth: Forward login request
+    Auth->>Auth: Validate credentials
+    Auth->>Auth: Generate JWT token<br/>(with roles & expiration)
+    Auth-->>Gateway: JWT token + user details
+    Gateway-->>Client: 200 OK<br/>{token, type: "Bearer", username, roles}
+
+    Note over Client,Eureka: 3. Protected Resource Access
+    
+    Client->>Gateway: GET /restaurants<br/>Authorization: Bearer [JWT]
+    Gateway->>Gateway: Extract JWT from header
+    Gateway->>Gateway: Validate JWT signature
+    Gateway->>Gateway: Extract user info & roles
+    Gateway->>Gateway: Check route permissions
+    Gateway->>Eureka: Discover restaurant-service location
+    Eureka-->>Gateway: Return restaurant-service URL
+    Gateway->>Restaurant: Forward request with headers:<br/>X-User-Id, X-User-Roles, X-Username
+    Restaurant->>Restaurant: Process request based on user context
+    Restaurant-->>Gateway: Restaurant data
+    Gateway-->>Client: 200 OK + Restaurant data
+
+    Note over Client,Eureka: 4. Role-Based Access Control Example
+    
+    Client->>Gateway: POST /restaurants<br/>Authorization: Bearer [JWT]<br/>{restaurant details}
+    Gateway->>Gateway: Validate JWT & extract roles
+    alt User has RESTAURANT_OWNER role
+        Gateway->>Restaurant: Forward request with user context
+        Restaurant->>Restaurant: Create restaurant<br/>(associate with user)
+        Restaurant-->>Gateway: Restaurant created
+        Gateway-->>Client: 201 Created
+    else User has CUSTOMER role
+        Gateway-->>Client: 403 Forbidden<br/>Access denied
+    end
+
+    Note over Client,Eureka: 5. JWT Token Expiration Handling
+    
+    Client->>Gateway: GET /orders<br/>Authorization: Bearer [EXPIRED_JWT]
+    Gateway->>Gateway: Validate JWT
+    Gateway->>Gateway: Token expired
+    Gateway-->>Client: 401 Unauthorized<br/>Token expired
+    Client->>Gateway: POST /auth/login<br/>(Re-authenticate)
+    Gateway->>Auth: Forward login request
+    Auth-->>Gateway: New JWT token
+    Gateway-->>Client: New token
+    Client->>Gateway: GET /orders<br/>Authorization: Bearer [NEW_JWT]
+    Gateway->>Gateway: Validate new JWT
+    Gateway->>Order: Forward request
+    Order-->>Gateway: Order data
+    Gateway-->>Client: 200 OK + Order data
+
+    Note over Client,Eureka: 6. Service Discovery & Load Balancing
+    
+    Client->>Gateway: GET /restaurants/1/menu
+    Gateway->>Eureka: Discover restaurant-service instances
+    Eureka-->>Gateway: Return available instances
+    Gateway->>Gateway: Load balance request
+    Gateway->>Restaurant: Forward to selected instance
+    Restaurant-->>Gateway: Menu data
+    Gateway-->>Client: Menu data

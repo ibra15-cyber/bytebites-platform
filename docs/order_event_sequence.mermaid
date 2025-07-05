@@ -1,0 +1,114 @@
+sequenceDiagram
+    participant Client
+    participant Gateway as API Gateway<br/>:8080
+    participant Order as Order Service<br/>:8083
+    participant Kafka as Kafka/RabbitMQ<br/>:9092
+    participant Notification as Notification Service<br/>:8084
+    participant Restaurant as Restaurant Service<br/>:8082
+    participant RestaurantOwner as Restaurant Owner App
+
+    Note over Client,RestaurantOwner: Complete Order Flow with Event-Driven Architecture
+
+    %% Order Placement
+    Client->>Gateway: POST /orders<br/>Authorization: Bearer [JWT]<br/>{restaurantId, items, deliveryAddress}
+    Gateway->>Gateway: Validate JWT & extract user info
+    Gateway->>Order: Forward request with user context<br/>Headers: X-User-Id, X-Username
+    
+    Order->>Order: Validate order data
+    Order->>Order: Calculate total amount
+    Order->>Order: Create order entity<br/>Status: PENDING
+    Order->>Order: Save to database
+    
+    Note over Order,Kafka: Event Publishing
+    Order->>Kafka: Publish OrderPlacedEvent<br/>{<br/>  eventType: "ORDER_PLACED",<br/>  orderId: 123,<br/>  customerId: 456,<br/>  restaurantId: 789,<br/>  totalAmount: 25.99,<br/>  timestamp: "2024-01-15T10:30:00Z"<br/>}
+    
+    Order-->>Gateway: 201 Created<br/>{orderId, status: "PENDING"}
+    Gateway-->>Client: Order confirmation
+
+    Note over Kafka,RestaurantOwner: Event Processing - Notification Service
+    
+    Kafka->>Notification: Consume OrderPlacedEvent
+    Notification->>Notification: Process event
+    Notification->>Notification: Generate customer notification<br/>"Order placed successfully!"
+    Notification->>Notification: Generate restaurant notification<br/>"New order received!"
+    
+    Note over Notification: Simulate sending notifications
+    Notification->>Notification: Send SMS/Email to customer
+    Notification->>Notification: Send notification to restaurant
+
+    Note over Kafka,RestaurantOwner: Event Processing - Restaurant Service
+    
+    Kafka->>Restaurant: Consume OrderPlacedEvent
+    Restaurant->>Restaurant: Process event
+    Restaurant->>Restaurant: Update restaurant statistics
+    Restaurant->>Restaurant: Log order for restaurant owner
+    
+    Note over RestaurantOwner,Restaurant: Restaurant Owner Order Management
+    
+    RestaurantOwner->>Gateway: GET /restaurants/my-orders<br/>Authorization: Bearer [RESTAURANT_JWT]
+    Gateway->>Restaurant: Forward request with owner context
+    Restaurant->>Restaurant: Query orders for owner's restaurants
+    Restaurant-->>Gateway: Order list
+    Gateway-->>RestaurantOwner: Orders for management
+
+    RestaurantOwner->>Gateway: PUT /orders/123/status<br/>Authorization: Bearer [RESTAURANT_JWT]<br/>{status: "CONFIRMED"}
+    Gateway->>Order: Forward status update
+    Order->>Order: Update order status
+    Order->>Order: Validate restaurant ownership
+    
+    Note over Order,Kafka: Status Update Event
+    Order->>Kafka: Publish OrderStatusChangedEvent<br/>{<br/>  eventType: "ORDER_STATUS_CHANGED",<br/>  orderId: 123,<br/>  newStatus: "CONFIRMED",<br/>  timestamp: "2024-01-15T10:35:00Z"<br/>}
+    
+    Order-->>Gateway: Status updated
+    Gateway-->>RestaurantOwner: Order confirmed
+
+    Note over Kafka,Client: Status Change Notifications
+    
+    Kafka->>Notification: Consume OrderStatusChangedEvent
+    Notification->>Notification: Generate status update notification
+    Notification->>Notification: Send notification to customer<br/>"Order confirmed by restaurant"
+    
+    Note over Client,RestaurantOwner: Customer Order Tracking
+    
+    Client->>Gateway: GET /orders/123<br/>Authorization: Bearer [CUSTOMER_JWT]
+    Gateway->>Order: Forward request with customer context
+    Order->>Order: Validate customer ownership
+    Order->>Order: Return order details
+    Order-->>Gateway: Order details with status
+    Gateway-->>Client: Current order status
+
+    Note over Client,RestaurantOwner: Complete Order Lifecycle
+    
+    RestaurantOwner->>Gateway: PUT /orders/123/status<br/>{status: "PREPARING"}
+    Gateway->>Order: Update status
+    Order->>Kafka: Publish OrderStatusChangedEvent
+    Kafka->>Notification: Notify customer "Order being prepared"
+    
+    RestaurantOwner->>Gateway: PUT /orders/123/status<br/>{status: "READY"}
+    Gateway->>Order: Update status
+    Order->>Kafka: Publish OrderStatusChangedEvent
+    Kafka->>Notification: Notify customer "Order ready for pickup"
+    
+    RestaurantOwner->>Gateway: PUT /orders/123/status<br/>{status: "DELIVERED"}
+    Gateway->>Order: Update status
+    Order->>Kafka: Publish OrderStatusChangedEvent
+    Kafka->>Notification: Notify customer "Order delivered"
+
+    Note over Client,RestaurantOwner: Error Handling Example
+    
+    Client->>Gateway: POST /orders<br/>Authorization: Bearer [JWT]<br/>{invalid order data}
+    Gateway->>Order: Forward invalid request
+    Order->>Order: Validate order data
+    Order->>Order: Validation fails
+    Order-->>Gateway: 400 Bad Request<br/>Validation errors
+    Gateway-->>Client: Order validation failed
+
+    Note over Client,RestaurantOwner: Event Processing Failure Recovery
+    
+    Order->>Kafka: Publish OrderPlacedEvent
+    Kafka->>Notification: Attempt to consume event
+    Notification->>Notification: Processing fails
+    Notification->>Kafka: NACK - retry message
+    Kafka->>Notification: Retry event delivery
+    Notification->>Notification: Process successfully
+    Notification->>Kafka: ACK - message processed
