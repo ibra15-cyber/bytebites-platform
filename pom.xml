@@ -10,6 +10,7 @@
         <module>config-server</module>
         <module>auth-service</module>
         <module>api-gateway</module>
+        <module>resturant-service</module>
     </modules>
 
 </project>
