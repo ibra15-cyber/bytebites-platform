@@ -1,0 +1,33 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+    config:
+      enabled: false
+  main:
+    web-application-type: reactive
+
+eureka:
+  client:
+    enabled: false
+
+jwt:
+  secret: bXlTZWNyZXRLZXlGb3JKV1RUb2tlbkdlbmVyYXRpb25UaGF0SXNMb25nRW5vdWdoRm9ySFMyNTY=
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  level:
+    com.ibra.apigateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
