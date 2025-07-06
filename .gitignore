@@ -55,3 +55,5 @@ logs/
 *.swp
 *~
 .localized
+
+./notification-service/src/main/resources/application.yml

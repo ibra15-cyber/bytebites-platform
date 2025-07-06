@@ -43,6 +43,8 @@ Ensure the following ports are available:
 
 ### 3. Service Startup Order ⚡
 
+Start your microservices in the correct order: Eureka Server -> Config Server -> Auth Service -> Restaurant Service -> Order Service -> Notification Service -> API Gateway.
+
 **CRITICAL**: Services must be started in the correct order due to dependencies:
 
 ```bash
