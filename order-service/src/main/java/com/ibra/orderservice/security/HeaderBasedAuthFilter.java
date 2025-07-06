@@ -26,29 +26,20 @@ public class HeaderBasedAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String userId = request.getHeader("X-User-Id");
-        String userRolesHeader = request.getHeader("X-User-Role"); // e.g., "ROLE_ADMIN,ROLE_RESTAURANT_OWNER"
+        String userRolesHeader = request.getHeader("X-User-Role");
         String email = request.getHeader("X-User-Email");
 
         if (userId != null && !userId.isEmpty() && userRolesHeader != null && !userRolesHeader.isEmpty()) {
             try {
-                Long parsedUserId = Long.parseLong(userId); // Parse userId to Long if your service uses Long IDs
+                Long parsedUserId = Long.parseLong(userId);
                 List<SimpleGrantedAuthority> authorities = Arrays.stream(userRolesHeader.split(","))
                         .map(String::trim)
                         .filter(role -> !role.isEmpty())
-                        // Ensure roles are in the correct format for Spring Security (e.g., "ROLE_ADMIN")
-                        // If your X-User-Roles already has "ROLE_", then remove `role -> "ROLE_" + role`
-                        // Make sure it matches what @PreAuthorize expects.
-                        .map(SimpleGrantedAuthority::new) // If roles are already like "ROLE_ADMIN"
-                        // .map(role -> new SimpleGrantedAuthority("ROLE_" + role)) // If roles are like "ADMIN"
+                        .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList());
 
-                // Create an Authentication object.
-                // The principal can be any object representing the user. Here, we'll use the userId.
-                // Credentials are null as authentication happened upstream.
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(parsedUserId, null, authorities);
-
-                // Set the Authentication object in the SecurityContextHolder
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
                 logger.debug("Populated SecurityContext with user ID: {} and roles: {}, and email: {}", parsedUserId, userRolesHeader, email);
@@ -61,9 +52,6 @@ public class HeaderBasedAuthFilter extends OncePerRequestFilter {
         } else {
             logger.debug("No X-User-Id or X-User-Roles headers found. Proceeding without explicit authentication for this request.");
         }
-
-        // Continue the filter chain. Spring Security's authorizeHttpRequests and @PreAuthorize
-        // will then evaluate based on the populated SecurityContext (or lack thereof).
         filterChain.doFilter(request, response);
     }
 }

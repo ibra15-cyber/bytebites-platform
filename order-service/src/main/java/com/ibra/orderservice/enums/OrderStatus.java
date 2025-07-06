@@ -1,7 +1,5 @@
 package com.ibra.orderservice.enums;
 
-// OrderStatus.java
-
 public enum OrderStatus {
     PENDING,
     CONFIRMED,

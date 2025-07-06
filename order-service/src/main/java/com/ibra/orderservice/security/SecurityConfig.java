@@ -26,13 +26,8 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                                // If all /api/orders/** endpoints require authentication
-                                // and their specific roles are handled by @PreAuthorize on controller methods,
-                                // then you can simply state that any request needs to be authenticated.
+
                                 .anyRequest().authenticated()
-                        // If you *do* have public endpoints for the Order Service (e.g., a health check specific to orders)
-                        // you would add them here. For example:
-                        // .requestMatchers(HttpMethod.GET, "/api/orders/health").permitAll()
                 )
                 .addFilterBefore(headerBasedAuthFilter(), BasicAuthenticationFilter.class);
 

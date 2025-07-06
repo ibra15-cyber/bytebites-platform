@@ -50,9 +50,6 @@ public class OrderService {
     private RestaurantServiceClient restaurantServiceClient;
 
     @Autowired
-    private RabbitTemplate rabbitTemplate;
-
-    @Autowired
     private OrderEventPublisher orderEventPublisher;
 
 

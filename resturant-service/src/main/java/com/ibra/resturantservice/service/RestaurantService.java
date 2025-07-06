@@ -32,7 +32,6 @@ public class RestaurantService {
     @Autowired
     private RestaurantMapper restaurantMapper;
 
-    // Create a new restaurant
     public RestaurantDTO createRestaurant(CreateRestaurantRequest request, Long ownerId) {
         logger.info("Creating new restaurant for owner: {}", ownerId);
 

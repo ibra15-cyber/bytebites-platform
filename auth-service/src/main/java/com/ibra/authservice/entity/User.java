@@ -52,7 +52,6 @@ public class User implements UserDetails {
     private boolean accountNonLocked = true;
     private boolean credentialsNonExpired = true;
 
-    // Constructors
     public User() {}
 
     public User(String firstName, String lastName, String email, String password, UserRole role) {
@@ -63,7 +62,6 @@ public class User implements UserDetails {
         this.role = role;
     }
 
-    // UserDetails implementation
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(role.name()));
@@ -94,7 +92,6 @@ public class User implements UserDetails {
         return enabled;
     }
 
-    // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

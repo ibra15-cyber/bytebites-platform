@@ -35,14 +35,12 @@ public class AuthService {
     }
 
     public Optional<Map<String, String>> registerUser(RegisterRequest registerRequest) {
-        // Check if email already exists
         if (userRepository.existsByEmail(registerRequest.getEmail())) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Email is already taken!");
             return Optional.of(error);
         }
 
-        // Create new user
         User user = new User(
                 registerRequest.getFirstName(),
                 registerRequest.getLastName(),
@@ -52,7 +50,7 @@ public class AuthService {
         );
 
         userRepository.save(user);
-        return Optional.empty(); // No error, registration successful
+        return Optional.empty();
     }
 
     public AuthResponse loginUser(LoginRequest loginRequest) throws AuthenticationException {

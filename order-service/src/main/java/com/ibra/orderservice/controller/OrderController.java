@@ -34,7 +34,6 @@ public class OrderController {
 
         logger.info("Creating order for restaurant: {}", request.getRestaurantId());
 
-        // Extract customer info from JWT token (set by API Gateway)
         Long customerId = Long.valueOf(httpRequest.getHeader("X-User-Id"));
         String customerEmail = httpRequest.getHeader("X-User-Email");
 

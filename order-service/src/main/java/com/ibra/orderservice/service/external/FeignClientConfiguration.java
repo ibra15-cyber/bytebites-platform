@@ -13,13 +13,11 @@ import java.util.Enumeration;
 @Configuration
 public class FeignClientConfiguration {
 
-    // Define the headers you want to propagate
     private static final String[] HEADERS_TO_PROPAGATE = {
             "X-User-Id",
-            "X-User-Email", // If restaurant service also uses email for logging/context
+            "X-User-Email",
             "X-User-Role",
-            "Authorization" // Propagate the original Authorization header as well, if needed by downstream services
-            // (though X-User-Id/Role should be sufficient after Gateway processing)
+            "Authorization"
     };
 
     @Bean

@@ -1,11 +1,9 @@
-# bootstrap.yml (in your auth-service project)
-
 spring:
   application:
-    name: auth-service # This is crucial for the Config Server to identify which config to serve
+    name: auth-service
   cloud:
     config:
       uri: http://localhost:8888
   config:
-    import: optional:configserver:http://localhost:8888 # Modern Spring Boot way to import config. Prefer this.
+    import: optional:configserver:http://localhost:8888
 

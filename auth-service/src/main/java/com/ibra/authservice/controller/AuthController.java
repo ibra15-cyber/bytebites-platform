@@ -29,14 +29,11 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
-        // Rely on global exception handler for general exceptions
         Optional<Map<String, String>> error = authService.registerUser(registerRequest);
         if (error.isPresent()) {
             return ResponseEntity.badRequest().body(error.get());
         }
 
-        // For registration, we typically don't return a token immediately.
-        // You might want to return a more generic success message or a simplified DTO.
         Map<String, String> successResponse = new HashMap<>();
         successResponse.put("message", "Registration successful. Please log in.");
         return ResponseEntity.ok(successResponse);
@@ -49,21 +46,15 @@ public class AuthController {
             return ResponseEntity.ok(authResponse);
 
         } catch (AuthenticationException e) {
-            // Keep specific handling for AuthenticationException
             Map<String, String> error = new HashMap<>();
             error.put("error", "Invalid email or password");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
         }
-        // Rely on global exception handler for other unexpected exceptions
     }
 
     @GetMapping("/profile")
-    public ResponseEntity<?> getUserProfile(@RequestHeader("X-User-Id") String userId, // X-User-Id is the numerical ID
+    public ResponseEntity<?> getUserProfile(@RequestHeader("X-User-Id") String userId,
                                             @RequestHeader("X-User-Email") String userEmail) {
-        // Rely on global exception handler for general exceptions
-        // Assuming your AuthService.getUserProfile or its underlying repository
-        // will throw a specific exception (e.g., ResourceNotFoundException)
-        // that your GlobalExceptionHandler can catch and map to NOT_FOUND.
         Optional<Map<String, Object>> profile = authService.getUserProfile(userEmail);
 
         if (profile.isPresent()) {

@@ -25,10 +25,8 @@ public class RegisterRequest {
 
     private UserRole role = UserRole.CUSTOMER;
 
-    // Constructors
     public RegisterRequest() {}
 
-    // Getters and Setters
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
 

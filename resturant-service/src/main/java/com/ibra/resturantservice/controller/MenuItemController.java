@@ -29,11 +29,9 @@ public class MenuItemController {
     private MenuItemService menuItemService;
 
     // Helper method to extract user ID from request headers
-    // This assumes X-User-Id is the numerical ID, as per our last discussion for ownership validation
     private Long getUserIdFromRequest(HttpServletRequest request) {
         String userIdHeader = request.getHeader("X-User-Id");
         if (userIdHeader == null || userIdHeader.isEmpty()) {
-            // This should ideally not happen if Gateway is correctly forwarding authenticated requests
             logger.warn("X-User-Id header is missing or empty.");
             throw new SecurityException("User ID not found in request headers.");
         }
