@@ -23,6 +23,8 @@ public class RabbitMQConfig {
     // Routing keys this service is interested in (must match publisher's keys)
     public static final String ORDER_ROUTING_KEY_PLACED = "order.event.placed";
     public static final String ORDER_ROUTING_KEY_STATUS_UPDATED = "order.event.status.updated";
+    public static final String ORDER_ROUTING_KEY_CANCELLED = "order.event.cancelled";
+    public static final String ORDER_ROUTING_KEY_RATED = "order.event.rated";
 
     /**
      * Declares the Topic Exchange. This service needs to declare it locally
@@ -62,6 +64,20 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(restaurantQueue)
                 .to(orderExchange)
                 .with(ORDER_ROUTING_KEY_STATUS_UPDATED);
+    }
+
+    @Bean
+    public Binding restaurantBindingOrderCancelled(Queue restaurantQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(restaurantQueue)
+                .to(orderExchange)
+                .with(ORDER_ROUTING_KEY_CANCELLED);
+    }
+
+    @Bean
+    public Binding restaurantBindingOrderRated(Queue restaurantQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(restaurantQueue)
+                .to(orderExchange)
+                .with(ORDER_ROUTING_KEY_RATED);
     }
 
     /**

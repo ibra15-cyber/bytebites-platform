@@ -35,5 +35,6 @@ public class OrderPreparationListener {
             Thread.currentThread().interrupt();
             logger.error("Order preparation interrupted for Order ID: {}", event.getOrderId(), e);
         }
+        logger.info("Order prepared: {}, {}, {} ", event.getOrderId(), event.getRestaurantName(), event.getCustomerEmail());
     }
 }

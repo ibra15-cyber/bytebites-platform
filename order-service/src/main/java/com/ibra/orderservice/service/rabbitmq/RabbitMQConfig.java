@@ -82,6 +82,21 @@ public class RabbitMQConfig {
                 .with(ORDER_ROUTING_KEY_STATUS_UPDATED);
     }
 
+    @Bean
+    public Binding restaurantBindingCancelled(Queue restaurantQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(restaurantQueue)
+                .to(orderExchange)
+                .with(ORDER_ROUTING_KEY_CANCELLED);
+    }
+
+    @Bean
+    public Binding restaurantBindingRated(Queue restaurantQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(restaurantQueue)
+                .to(orderExchange)
+                .with(ORDER_ROUTING_KEY_RATED);
+    }
+
+
     /**
      * JSON Message Converter for object serialization/deserialization.
      */
