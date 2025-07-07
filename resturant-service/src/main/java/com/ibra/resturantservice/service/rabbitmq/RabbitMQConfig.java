@@ -3,7 +3,7 @@ package com.ibra.resturantservice.service.rabbitmq;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.core.TopicExchange; // Use TopicExchange as used by Order Service
+import org.springframework.amqp.core.TopicExchange; // Use TopicExchange as defined in Order Service
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -15,16 +15,18 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
+    // These constants must match the exchange name used by the Order Service (publisher)
+    // and the queue name configured in restaurant-service.yml for this consumer.
+    public static final String ORDER_EXCHANGE = "order.topic.exchange"; // Must match Order Service's exchange name
+    public static final String RESTAURANT_QUEUE = "restaurant.order.queue"; // This service's dedicated queue name
 
-    public static final String ORDER_EXCHANGE = "order.topic.exchange";
-    public static final String RESTAURANT_QUEUE = "restaurant.order.queue";
-
+    // Routing keys this service is interested in (must match publisher's keys)
     public static final String ORDER_ROUTING_KEY_PLACED = "order.event.placed";
-     public static final String ORDER_ROUTING_KEY_STATUS_UPDATED = "order.event.status.updated";
+    public static final String ORDER_ROUTING_KEY_STATUS_UPDATED = "order.event.status.updated";
 
     /**
-     * Declares the Topic Exchange. This service needs to declare it to bind to it,
-     * even if the Order Service is the primary creator.
+     * Declares the Topic Exchange. This service needs to declare it locally
+     * to bind its queue to it, even if the Order Service is the primary creator.
      */
     @Bean
     public TopicExchange orderExchange() {
@@ -37,8 +39,7 @@ public class RabbitMQConfig {
      */
     @Bean
     public Queue restaurantQueue() {
-        // durable = true means the queue will survive a broker restart
-        return new Queue(RESTAURANT_QUEUE, true);
+        return new Queue(RESTAURANT_QUEUE, true); // Durable queue
     }
 
     /**
@@ -52,14 +53,16 @@ public class RabbitMQConfig {
                 .with(ORDER_ROUTING_KEY_PLACED);
     }
 
-    // If the restaurant service needs to listen to status updates as well, add another binding:
-     @Bean
-     public Binding restaurantBindingStatusUpdated(Queue restaurantQueue, TopicExchange orderExchange) {
-         return BindingBuilder.bind(restaurantQueue)
-                              .to(orderExchange)
-                              .with(ORDER_ROUTING_KEY_STATUS_UPDATED);
-     }
-
+    /**
+     * Binds the Restaurant Queue to the Order Exchange for 'order.event.status.updated' messages.
+     * This ensures the restaurant service receives order status updates.
+     */
+    @Bean
+    public Binding restaurantBindingStatusUpdated(Queue restaurantQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(restaurantQueue)
+                .to(orderExchange)
+                .with(ORDER_ROUTING_KEY_STATUS_UPDATED);
+    }
 
     /**
      * Configures a MessageConverter to use Jackson for JSON serialization/deserialization.

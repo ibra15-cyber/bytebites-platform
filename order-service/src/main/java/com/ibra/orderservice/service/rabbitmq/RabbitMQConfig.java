@@ -21,14 +21,11 @@ public class RabbitMQConfig {
     public static final String NOTIFICATION_QUEUE = "notification.order.queue";
     public static final String RESTAURANT_QUEUE = "restaurant.order.queue";
 
-//     Routing keys
-    public static final String NOTIFICATION_ROUTING_KEY = "order.notification";
-    public static final String RESTAURANT_ROUTING_KEY = "order.restaurant";
+    // Routing keys (Order Service is the producer)
     public static final String ORDER_ROUTING_KEY_PLACED = "order.event.placed";
     public static final String ORDER_ROUTING_KEY_CANCELLED = "order.event.cancelled";
     public static final String ORDER_ROUTING_KEY_STATUS_UPDATED = "order.event.status.updated";
     public static final String ORDER_ROUTING_KEY_RATED = "order.event.rated";
-
 
     /**
      * Declares a Topic Exchange for flexible routing
@@ -39,57 +36,54 @@ public class RabbitMQConfig {
     }
 
     /**
-     * Queue for the Notification Service
+     * Queue for the Notification Service to consume events.
      */
     @Bean
     public Queue notificationQueue() {
-        return new Queue(NOTIFICATION_QUEUE, true);
+        return new Queue(NOTIFICATION_QUEUE, true); // Durable queue
     }
 
     /**
-     * Queue for the Restaurant Service
+     * Queue for the Restaurant Service to consume events.
      */
     @Bean
     public Queue restaurantQueue() {
-        return new Queue(RESTAURANT_QUEUE, true);
+        return new Queue(RESTAURANT_QUEUE, true); // Durable queue
     }
 
     /**
-     * Binds the Notification Queue to the Order Exchange
-     *  Bindings: Notification service listens to all order events
+     * Binds the Notification Queue to the Order Exchange.
+     * Notification service listens to all events under "order.event."
      */
     @Bean
     public Binding notificationBinding(Queue notificationQueue, TopicExchange orderExchange) {
         return BindingBuilder.bind(notificationQueue)
                 .to(orderExchange)
-                .with("order.event.#"); // Listen to all events under "order.event."
+                .with("order.event.#"); // Wildcard routing key for all order events
     }
 
-    // Bindings: Restaurant service listens to placed and status updated events
+    /**
+     * Binds the Restaurant Queue to the Order Exchange for 'ORDER_PLACED' events.
+     */
     @Bean
     public Binding restaurantBindingPlaced(Queue restaurantQueue, TopicExchange orderExchange) {
         return BindingBuilder.bind(restaurantQueue)
                 .to(orderExchange)
                 .with(ORDER_ROUTING_KEY_PLACED);
     }
+
+    /**
+     * Binds the Restaurant Queue to the Order Exchange for 'ORDER_STATUS_UPDATED' events.
+     */
     @Bean
     public Binding restaurantBindingStatusUpdated(Queue restaurantQueue, TopicExchange orderExchange) {
         return BindingBuilder.bind(restaurantQueue)
                 .to(orderExchange)
                 .with(ORDER_ROUTING_KEY_STATUS_UPDATED);
     }
-    /**
-     * Binds the Restaurant Queue to the Order Exchange
-     */
-    @Bean
-    public Binding restaurantBinding(Queue restaurantQueue, TopicExchange orderExchange) {
-        return BindingBuilder.bind(restaurantQueue)
-                .to(orderExchange)
-                .with(RESTAURANT_ROUTING_KEY);
-    }
 
     /**
-     * JSON Message Converter for object serialization
+     * JSON Message Converter for object serialization/deserialization.
      */
     @Bean
     public MessageConverter jsonMessageConverter() {
@@ -97,7 +91,7 @@ public class RabbitMQConfig {
     }
 
     /**
-     * RabbitTemplate with JSON converter
+     * Configures RabbitTemplate with the JSON converter.
      */
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {

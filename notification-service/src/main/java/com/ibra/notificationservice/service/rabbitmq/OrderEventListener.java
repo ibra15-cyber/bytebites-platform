@@ -15,8 +15,13 @@ public class OrderEventListener {
 
     private final NotificationService notificationService; // Autowire the new service
 
+    // Option 1: Get queue name from application.yml (recommended for flexibility)
     @Value("${app.rabbitmq.notification-queue-name:notification.order.queue}") // Default value if not found
     private String notificationQueueName;
+
+    // Option 2 (Alternative - if queue name is truly fixed and not configurable per environment):
+    // private static final String NOTIFICATION_QUEUE = "notification.order.queue";
+
 
     public OrderEventListener(NotificationService notificationService) {
         this.notificationService = notificationService;
@@ -42,6 +47,7 @@ public class OrderEventListener {
         } catch (Exception e) {
             logger.error("Error handling order event: {} for order: {}: {}",
                     event.getEventType(), event.getOrderId(), e.getMessage(), e);
+            // Re-throw to trigger retry mechanism if configured, or send to dead-letter queue
             throw e;
         }
     }

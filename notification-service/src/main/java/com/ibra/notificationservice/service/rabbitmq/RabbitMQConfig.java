@@ -15,9 +15,11 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    public static final String ORDER_EXCHANGE = "order.exchange";
-    public static final String NOTIFICATION_QUEUE = "notification.queue";
-    public static final String NOTIFICATION_ROUTING_KEY = "order.notification";
+    // MUST match order service exchange name
+    public static final String ORDER_EXCHANGE = "order.topic.exchange";
+
+    // Notification-specific queue
+    public static final String NOTIFICATION_QUEUE = "notification.order.queue";
 
     @Bean
     public TopicExchange orderExchange() {
@@ -29,12 +31,16 @@ public class RabbitMQConfig {
         return new Queue(NOTIFICATION_QUEUE, true);
     }
 
+    /**
+     * Bind notification queue to ALL order events using wildcard pattern
+     * This will receive all events that start with "order.event."
+     */
     @Bean
     public Binding notificationBinding() {
         return BindingBuilder
                 .bind(notificationQueue())
                 .to(orderExchange())
-                .with(NOTIFICATION_ROUTING_KEY);
+                .with("order.event.#"); // Listen to all order events
     }
 
     @Bean
