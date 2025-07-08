@@ -46,4 +46,19 @@ public class RestaurantDTO {
     private List<MenuItemDTO> menuItems;
     private String cuisine;
     private Double rate;
+
+
+    //TODO for test
+//    public RestaurantDTO(Long id, String name, String ownerEmail, String phoneNumber, String address, String description, String cuisine, RestaurantStatus status){
+//        this.id = id;
+//        this.name = name;
+//        this.ownerEmail = ownerEmail;
+//        this.phoneNumber = phoneNumber;
+//        this.address = address;
+//        this.description = description;
+//        this.cuisine = cuisine;
+//        this.status = status;
+//        this.createdAt = LocalDateTime.now();
+//        this.updatedAt = LocalDateTime.now();
+//    }
 }
