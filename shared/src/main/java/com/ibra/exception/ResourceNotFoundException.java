@@ -1,4 +1,4 @@
-package com.ibra.resturantservice.exception;
+package com.ibra.exception;
 
 public class ResourceNotFoundException extends RuntimeException {
 

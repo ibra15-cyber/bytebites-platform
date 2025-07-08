@@ -1,4 +1,5 @@
-package com.ibra.orderservice.exception;
+package com.ibra.exception;
+
 
 public class UnauthorizedException extends RuntimeException {
 

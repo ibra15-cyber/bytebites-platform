@@ -1,6 +1,4 @@
-package com.ibra.resturantservice.exception;
-
-
+package com.ibra.exception;
 
 public class BusinessException extends RuntimeException {
 
