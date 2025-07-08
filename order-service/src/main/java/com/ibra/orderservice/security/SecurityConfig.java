@@ -1,5 +1,7 @@
 package com.ibra.orderservice.security;
 
+import com.ibra.security.filter.HeaderBasedAuthFilter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -15,10 +17,8 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    @Bean
-    public HeaderBasedAuthFilter headerBasedAuthFilter() {
-        return new HeaderBasedAuthFilter();
-    }
+    @Autowired // Autowire the shared filter
+    private HeaderBasedAuthFilter headerBasedAuthFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -26,10 +26,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-
                                 .anyRequest().authenticated()
                 )
-                .addFilterBefore(headerBasedAuthFilter(), BasicAuthenticationFilter.class);
+                .addFilterBefore(headerBasedAuthFilter, BasicAuthenticationFilter.class);
 
         return http.build();
     }

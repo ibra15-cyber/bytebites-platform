@@ -149,6 +149,13 @@
             <scope>runtime</scope> <!-- Or 'test' if only used for tests -->
         </dependency>
 
+        <!-- In auth-service/pom.xml, order-service/pom.xml, restaurant-service/pom.xml -->
+        <dependency>
+            <groupId>com.ibra</groupId>
+            <artifactId>shared</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+
     </dependencies>
     <dependencyManagement>
         <dependencies>

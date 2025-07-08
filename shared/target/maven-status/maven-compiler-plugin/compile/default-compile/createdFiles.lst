@@ -7,3 +7,4 @@ com\ibra\dto\ApiResponse.class
 com\ibra\dto\OrderPlacedEvent$OrderItemEvent.class
 com\ibra\dto\RestaurantDTO.class
 com\ibra\enums\MenuItemCategory.class
+com\ibra\security\filter\HeaderBasedAuthFilter.class
