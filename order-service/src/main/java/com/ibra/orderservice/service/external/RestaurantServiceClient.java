@@ -1,8 +1,8 @@
 package com.ibra.orderservice.service.external;
 
-import com.ibra.orderservice.dto.ApiResponse;
-import com.ibra.orderservice.dto.MenuItemDTO;
-import com.ibra.orderservice.dto.RestaurantDTO;
+import com.ibra.dto.ApiResponse;
+import com.ibra.dto.MenuItemDTO;
+import com.ibra.dto.RestaurantDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.cloud.openfeign.FeignClientProperties;
 import org.springframework.web.bind.annotation.GetMapping;

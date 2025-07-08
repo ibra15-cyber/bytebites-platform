@@ -1,10 +1,10 @@
 package com.ibra.orderservice.service.external;
 
-import com.ibra.orderservice.dto.ApiResponse;
-import com.ibra.orderservice.dto.MenuItemDTO;
-import com.ibra.orderservice.dto.RestaurantDTO;
-import com.ibra.orderservice.enums.MenuItemCategory;
-import com.ibra.orderservice.enums.MenuItemStatus;
+import com.ibra.dto.ApiResponse;
+import com.ibra.dto.MenuItemDTO;
+import com.ibra.dto.RestaurantDTO;
+import com.ibra.enums.MenuItemCategory;
+import com.ibra.enums.MenuItemStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +37,7 @@ class RestaurantServiceClientTest {
         sampleRestaurant.setId(1L);
         sampleRestaurant.setName("Test Restaurant");
         sampleRestaurant.setAddress("123 Test Street");
-        sampleRestaurant.setPhone("123-456-7890");
+        sampleRestaurant.setPhoneNumber("123-456-7890");
         sampleRestaurant.setEmail("owner@gmail.com");
 
         // Create sample menu item

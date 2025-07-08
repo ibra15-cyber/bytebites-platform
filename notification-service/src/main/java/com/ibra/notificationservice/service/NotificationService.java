@@ -1,7 +1,7 @@
 package com.ibra.notificationservice.service;
 
-import com.ibra.notificationservice.dto.OrderPlacedEvent;
-import com.ibra.notificationservice.dto.RestaurantDTO;
+import com.ibra.dto.OrderPlacedEvent;
+import com.ibra.dto.RestaurantDTO;
 import com.ibra.notificationservice.service.email.EmailService;
 import com.ibra.notificationservice.service.external.RestaurantClient;
 import org.slf4j.Logger;

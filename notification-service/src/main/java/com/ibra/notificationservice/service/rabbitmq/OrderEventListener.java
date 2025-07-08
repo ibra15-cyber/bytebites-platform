@@ -1,6 +1,6 @@
 package com.ibra.notificationservice.service.rabbitmq;
 
-import com.ibra.notificationservice.dto.OrderPlacedEvent;
+import com.ibra.dto.OrderPlacedEvent;
 import com.ibra.notificationservice.service.NotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

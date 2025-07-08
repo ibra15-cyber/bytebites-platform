@@ -1,6 +1,9 @@
 // Complete OrderService.java
 package com.ibra.orderservice.service;
 
+import com.ibra.dto.ApiResponse;
+import com.ibra.dto.MenuItemDTO;
+import com.ibra.dto.RestaurantDTO;
 import com.ibra.orderservice.dto.*;
 import com.ibra.orderservice.entity.Order;
 import com.ibra.orderservice.entity.OrderItem;
@@ -16,7 +19,6 @@ import com.ibra.orderservice.service.rabbitmq.OrderEventPublisher;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

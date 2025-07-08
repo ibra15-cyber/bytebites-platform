@@ -121,6 +121,10 @@
 			<artifactId>spring-dotenv</artifactId>
 			<version>4.0.0</version>
 		</dependency>
+		<dependency>
+			<groupId>com.ibra</groupId>
+			<artifactId>shared</artifactId>
+		</dependency>
 
 	</dependencies>
 	<dependencyManagement>
@@ -132,6 +136,13 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+
+			<dependency>
+				<groupId>com.ibra</groupId>
+				<artifactId>shared</artifactId>
+				<version>0.0.1-SNAPSHOT</version>
+			</dependency>
+
 		</dependencies>
 	</dependencyManagement>
 

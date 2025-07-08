@@ -3,9 +3,6 @@ package com.ibra.orderservice.service.external;
 import static org.junit.jupiter.api.Assertions.*;
 
 
-import com.ibra.orderservice.dto.ApiResponse;
-import com.ibra.orderservice.dto.MenuItemDTO;
-import com.ibra.orderservice.dto.RestaurantDTO;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,13 +15,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.Vector;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)

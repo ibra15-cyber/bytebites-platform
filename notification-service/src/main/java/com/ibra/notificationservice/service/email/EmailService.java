@@ -1,7 +1,7 @@
 package com.ibra.notificationservice.service.email;
 
-import com.ibra.notificationservice.dto.OrderPlacedEvent;
-import com.ibra.notificationservice.dto.RestaurantDTO;
+import com.ibra.dto.OrderPlacedEvent;
+import com.ibra.dto.RestaurantDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -123,11 +123,11 @@ public class EmailService {
         content.append("ORDER ITEMS:\n");
         content.append("----------------------------------------\n");
 
-        if (event.getItems() != null) {
-            for (OrderPlacedEvent.OrderItemEvent item : event.getItems()) {
+        if (event.getOrderItems() != null) {
+            for (OrderPlacedEvent.OrderItemEvent item : event.getOrderItems()) {
                 content.append(item.getQuantity()).append("x ")
                         .append(item.getMenuItemName())
-                        .append(" - $").append(String.format("%.2f", item.getPriceAtOrderTime()))
+                        .append(" - $").append(String.format("%.2f", item.getUnitPrice()))
                         .append(" each\n");
             }
         }
@@ -166,11 +166,11 @@ public class EmailService {
         content.append("ITEMS TO PREPARE:\n");
         content.append("----------------------------------------\n");
 
-        if (event.getItems() != null) {
-            for (OrderPlacedEvent.OrderItemEvent item : event.getItems()) {
+        if (event.getOrderItems() != null) {
+            for (OrderPlacedEvent.OrderItemEvent item : event.getOrderItems()) {
                 content.append(item.getQuantity()).append("x ")
                         .append(item.getMenuItemName()) // Use menuItemName from event
-                        .append(" - $").append(String.format("%.2f", item.getPriceAtOrderTime())) // Use unitPrice
+                        .append(" - $").append(String.format("%.2f", item.getUnitPrice())) // Use unitPrice
                         .append(" each\n");
             }
         }

@@ -2,11 +2,15 @@ package com.ibra.orderservice.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.ibra.dto.ApiResponse;
+import com.ibra.dto.MenuItemDTO;
+import com.ibra.dto.RestaurantDTO;
+import com.ibra.enums.MenuItemCategory;
+import com.ibra.enums.MenuItemStatus;
+import com.ibra.enums.RestaurantStatus;
 import com.ibra.orderservice.dto.*;
 import com.ibra.orderservice.entity.Order;
 import com.ibra.orderservice.entity.OrderItem;
-import com.ibra.orderservice.enums.MenuItemCategory;
-import com.ibra.orderservice.enums.MenuItemStatus;
 import com.ibra.orderservice.enums.OrderStatus;
 import com.ibra.orderservice.exception.BusinessException;
 import com.ibra.orderservice.exception.ResourceNotFoundException;
@@ -32,11 +36,9 @@ import org.springframework.data.jpa.domain.Specification;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -108,11 +110,11 @@ class OrderServiceTest {
         restaurantDTO.setName("Test Restaurant");
         restaurantDTO.setDescription("Test Description");
         restaurantDTO.setAddress("Restaurant Address");
-        restaurantDTO.setPhone("9876543210");
+        restaurantDTO.setPhoneNumber("9876543210");
         restaurantDTO.setEmail("restaurant@test.com");
         restaurantDTO.setCuisine("Italian");
-        restaurantDTO.setIsActive(true);
-        restaurantDTO.setRating(4.5);
+        restaurantDTO.setStatus(RestaurantStatus.ACTIVE);
+        restaurantDTO.setRate(4.5);
     }
 
     private void setupMenuItemDTO() {

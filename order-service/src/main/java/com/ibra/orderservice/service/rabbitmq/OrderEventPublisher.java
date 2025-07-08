@@ -1,6 +1,6 @@
 package com.ibra.orderservice.service.rabbitmq;
 
-import com.ibra.orderservice.dto.OrderPlacedEvent;
+import com.ibra.dto.OrderPlacedEvent;
 import com.ibra.orderservice.entity.Order;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,7 +126,7 @@ public class OrderEventPublisher {
                             orderItem.getUnitPrice()
                     )).collect(Collectors.toList());
 
-            event.setItems(itemDetails);
+            event.setOrderItems(itemDetails);
         }
         return event;
     }

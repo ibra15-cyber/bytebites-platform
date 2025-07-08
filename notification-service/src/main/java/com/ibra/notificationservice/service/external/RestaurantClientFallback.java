@@ -1,6 +1,6 @@
 package com.ibra.notificationservice.service.external;
 
-import com.ibra.notificationservice.dto.RestaurantDTO;
+import com.ibra.dto.RestaurantDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

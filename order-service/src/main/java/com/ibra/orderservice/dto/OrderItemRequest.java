@@ -2,11 +2,15 @@ package com.ibra.orderservice.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Setter
 @Getter
+@AllArgsConstructor
+@NoArgsConstructor
 public class OrderItemRequest {
 
     // Getters and Setters
@@ -18,9 +22,5 @@ public class OrderItemRequest {
     private Integer quantity;
 
     private String specialInstructions;
-
-    // Constructors
-    public OrderItemRequest() {}
-
 }
 

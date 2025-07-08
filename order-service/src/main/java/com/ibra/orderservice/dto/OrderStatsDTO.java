@@ -17,12 +17,4 @@ public class OrderStatsDTO {
     private Long pendingOrders;
     private Double averageRating;
     private String favoriteRestaurant;
-
-    // Constructor used by OrderService
-    public OrderStatsDTO(Long totalOrders, Long completedOrders, Long cancelledOrders, BigDecimal totalSpent) {
-        this.totalOrders = totalOrders;
-        this.completedOrders = completedOrders;
-        this.cancelledOrders = cancelledOrders;
-        this.totalSpent = totalSpent;
-    }
 }

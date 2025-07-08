@@ -3,7 +3,7 @@ package com.ibra.orderservice.service.rabbitmq;
 import static org.junit.jupiter.api.Assertions.*;
 
 
-import com.ibra.orderservice.dto.OrderPlacedEvent;
+import com.ibra.dto.OrderPlacedEvent;
 import com.ibra.orderservice.entity.Order;
 import com.ibra.orderservice.entity.OrderItem;
 import com.ibra.orderservice.enums.OrderStatus;
@@ -19,9 +19,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -187,7 +185,7 @@ class OrderEventPublisherTest {
         );
 
         OrderPlacedEvent capturedEvent = eventCaptor.getValue();
-        assertNull(capturedEvent.getItems());
+        assertNull(capturedEvent.getOrderItems());
     }
 
     @Test
@@ -227,8 +225,8 @@ class OrderEventPublisherTest {
         );
 
         OrderPlacedEvent capturedEvent = eventCaptor.getValue();
-        assertNotNull(capturedEvent.getItems());
-        assertTrue(capturedEvent.getItems().isEmpty());
+        assertNotNull(capturedEvent.getOrderItems());
+        assertTrue(capturedEvent.getOrderItems().isEmpty());
     }
 
     @Test
@@ -262,19 +260,19 @@ class OrderEventPublisherTest {
         assertEquals(expectedEventType, event.getEventType());
 
         // Assert order items
-        assertNotNull(event.getItems());
-        assertEquals(2, event.getItems().size());
+        assertNotNull(event.getOrderItems());
+        assertEquals(2, event.getOrderItems().size());
 
-        OrderPlacedEvent.OrderItemEvent item1 = event.getItems().get(0);
+        OrderPlacedEvent.OrderItemEvent item1 = event.getOrderItems().get(0);
         assertEquals(orderItem1.getMenuItemId(), item1.getMenuItemId());
         assertEquals(orderItem1.getMenuItemName(), item1.getMenuItemName());
         assertEquals(orderItem1.getQuantity(), item1.getQuantity());
-        assertEquals(orderItem1.getUnitPrice(), item1.getPriceAtOrderTime());
+        assertEquals(orderItem1.getUnitPrice(), item1.getUnitPrice());
 
-        OrderPlacedEvent.OrderItemEvent item2 = event.getItems().get(1);
+        OrderPlacedEvent.OrderItemEvent item2 = event.getOrderItems().get(1);
         assertEquals(orderItem2.getMenuItemId(), item2.getMenuItemId());
         assertEquals(orderItem2.getMenuItemName(), item2.getMenuItemName());
         assertEquals(orderItem2.getQuantity(), item2.getQuantity());
-        assertEquals(orderItem2.getUnitPrice(), item2.getPriceAtOrderTime());
+        assertEquals(orderItem2.getUnitPrice(), item2.getUnitPrice());
     }
 }
