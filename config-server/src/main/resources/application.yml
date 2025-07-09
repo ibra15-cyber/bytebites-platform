@@ -10,3 +10,5 @@ spring:
         git:
           uri: https://github.com/ibra15-cyber/bytebites-config.git
           default-label: master
+          username: ${GIT_USERNAME}
+          password: ${GIT_PAT}
