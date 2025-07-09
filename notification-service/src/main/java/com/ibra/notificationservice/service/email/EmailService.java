@@ -41,6 +41,7 @@ public class EmailService {
 
         } catch (Exception e) {
             logger.error("Failed to send customer email for order: {}", event.getOrderId(), e);
+            throw new RuntimeException("Failed to send customer email", e);
         }
         return CompletableFuture.completedFuture(null);
     }

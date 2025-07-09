@@ -6,3 +6,7 @@ spring:
       uri: http://localhost:8888
   config:
     import: optional:configserver:http://localhost:8888
+
+jwt:
+  secret: mySecretKey1234iyahfauhiaiiyryeiyauifaidyjhy647383ahakjhfjapaadkahdkjs
+  expiration: 86400000

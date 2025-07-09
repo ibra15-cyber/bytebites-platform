@@ -6,6 +6,9 @@ import com.ibra.authservice.dto.RegisterRequest;
 import com.ibra.authservice.entity.User;
 import com.ibra.authservice.repository.UserRepository;
 import com.ibra.authservice.security.JwtUtils;
+import com.ibra.dto.ApiResponse;
+import com.ibra.exception.BusinessException;
+import com.ibra.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -34,13 +37,12 @@ public class AuthService {
         this.jwtUtil = jwtUtil;
     }
 
-    public Optional<Map<String, String>> registerUser(RegisterRequest registerRequest) {
+    public void registerUser(RegisterRequest registerRequest) {
         if (userRepository.existsByEmail(registerRequest.getEmail())) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Email is already taken!");
-            return Optional.of(error);
+            throw new BusinessException("Email is already taken!");
         }
 
+        // Create new user
         User user = new User(
                 registerRequest.getFirstName(),
                 registerRequest.getLastName(),
@@ -50,10 +52,11 @@ public class AuthService {
         );
 
         userRepository.save(user);
-        return Optional.empty();
     }
 
     public AuthResponse loginUser(LoginRequest loginRequest) throws AuthenticationException {
+        // AuthenticationManager will throw AuthenticationException (e.g., BadCredentialsException)
+        // which will be caught by GlobalExceptionHandler (or specific handler in AuthController)
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         loginRequest.getEmail(),
@@ -74,7 +77,7 @@ public class AuthService {
         );
     }
 
-    public Optional<Map<String, Object>> getUserProfile(String userEmail) {
+    public Map<String, Object> getUserProfile(String userEmail) { // Changed return type to Map directly
         Optional<User> userOptional = userRepository.findByEmail(userEmail);
 
         if (userOptional.isPresent()) {
@@ -86,8 +89,16 @@ public class AuthService {
             profile.put("email", user.getEmail());
             profile.put("role", user.getRole());
             profile.put("createdAt", user.getCreatedAt());
-            return Optional.of(profile);
+            return profile;
         }
-        return Optional.empty();
+        throw new ResourceNotFoundException("User profile not found with email: " + userEmail);
     }
+
+    public ApiResponse<Map<String, String>> getHealthStatus() {
+        Map<String, String> status = new HashMap<>();
+        status.put("status", "UP");
+        status.put("service", "auth-service");
+        return new ApiResponse<>(true, "Auth Service is healthy", status);
+    }
+
 }

@@ -136,7 +136,12 @@
             <artifactId>h2</artifactId>
             <scope>runtime</scope> <!-- Or 'test' if only used for tests -->
         </dependency>
-
+        <dependency>
+            <groupId>com.ibra</groupId>
+            <artifactId>shared</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
 
 
     </dependencies>
