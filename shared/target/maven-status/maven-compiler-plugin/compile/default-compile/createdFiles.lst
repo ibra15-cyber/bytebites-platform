@@ -1,10 +1,12 @@
 com\ibra\dto\MenuItemDTO.class
 com\ibra\dto\ApiResponse$ApiResponseBuilder.class
 com\ibra\dto\OrderPlacedEvent.class
+com\ibra\security\handler\JwtAccessDeniedHandler.class
 com\ibra\enums\MenuItemStatus.class
 com\ibra\dto\ApiResponse.class
 com\ibra\dto\OrderPlacedEvent$OrderItemEvent.class
 com\ibra\exception\GlobalExceptionHandler$ValidationErrorResponse.class
+com\ibra\security\handler\JwtAuthenticationEntryPoint.class
 com\ibra\exception\UnauthorizedException.class
 com\ibra\exception\GlobalExceptionHandler$ErrorResponse.class
 com\ibra\enums\RestaurantStatus.class
