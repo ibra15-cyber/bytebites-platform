@@ -1,6 +1,8 @@
 package com.ibra.authservice.security;
 
 import com.ibra.security.filter.HeaderBasedAuthFilter;
+import com.ibra.security.handler.JwtAccessDeniedHandler;
+import com.ibra.security.handler.JwtAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,8 +25,15 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    @Autowired // Autowire the shared filter
-    private HeaderBasedAuthFilter headerBasedAuthFilter;
+    private final HeaderBasedAuthFilter headerBasedAuthFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+
+    public SecurityConfig(HeaderBasedAuthFilter headerBasedAuthFilter, JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint, JwtAccessDeniedHandler jwtAccessDeniedHandler) {
+        this.headerBasedAuthFilter = headerBasedAuthFilter;
+        this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+        this.jwtAccessDeniedHandler = jwtAccessDeniedHandler;
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -36,8 +45,11 @@ public class SecurityConfig {
                         .requestMatchers("/auth/register", "/auth/login", "/auth/health", "/h2-console").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated())
-                .addFilterBefore(headerBasedAuthFilter, BasicAuthenticationFilter.class); // Use the autowired bean
-
+                .addFilterBefore(headerBasedAuthFilter, BasicAuthenticationFilter.class)
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint) // For unauthenticated access
+                        .accessDeniedHandler(jwtAccessDeniedHandler) // For authenticated but unauthorized access
+                );
         return http.build();
     }
 

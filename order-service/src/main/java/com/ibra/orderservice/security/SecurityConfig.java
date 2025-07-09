@@ -1,6 +1,8 @@
 package com.ibra.orderservice.security;
 
 import com.ibra.security.filter.HeaderBasedAuthFilter;
+import com.ibra.security.handler.JwtAccessDeniedHandler;
+import com.ibra.security.handler.JwtAuthenticationEntryPoint;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,8 +19,15 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    @Autowired // Autowire the shared filter
-    private HeaderBasedAuthFilter headerBasedAuthFilter;
+    private final HeaderBasedAuthFilter headerBasedAuthFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+
+    public SecurityConfig(HeaderBasedAuthFilter headerBasedAuthFilter, JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint, JwtAccessDeniedHandler jwtAccessDeniedHandler) {
+        this.headerBasedAuthFilter = headerBasedAuthFilter;
+        this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+        this.jwtAccessDeniedHandler = jwtAccessDeniedHandler;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -28,8 +37,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                                 .anyRequest().authenticated()
                 )
-                .addFilterBefore(headerBasedAuthFilter, BasicAuthenticationFilter.class);
-
+                .addFilterBefore(headerBasedAuthFilter, BasicAuthenticationFilter.class)
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint) // For unauthenticated access
+                        .accessDeniedHandler(jwtAccessDeniedHandler) // For authenticated but unauthorized access
+                );
         return http.build();
     }
 }
