@@ -26,11 +26,14 @@ public class RestaurantService {
 
     private static final Logger logger = LoggerFactory.getLogger(RestaurantService.class);
 
-    @Autowired
-    private RestaurantRepository restaurantRepository;
+    private final RestaurantRepository restaurantRepository;
 
-    @Autowired
-    private RestaurantMapper restaurantMapper;
+    private final RestaurantMapper restaurantMapper;
+
+    public RestaurantService(RestaurantRepository restaurantRepository, RestaurantMapper restaurantMapper) {
+        this.restaurantRepository = restaurantRepository;
+        this.restaurantMapper = restaurantMapper;
+    }
 
     public RestaurantDTO createRestaurant(CreateRestaurantRequest request, Long ownerId) {
         logger.info("Creating new restaurant for owner: {}", ownerId);

@@ -3,6 +3,7 @@ package com.ibra.security.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ibra.dto.ApiResponse;
+import com.ibra.dto.ErrorResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.time.LocalDateTime;
 
 /**
  * Custom AuthenticationEntryPoint to handle unauthenticated requests.
@@ -42,14 +44,16 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401 Unauthorized
 
-        ApiResponse<Object> apiResponse = ApiResponse.builder()
-                .success(false)
-                .message("Authentication required or token is invalid: " + authException.getMessage())
-                .data(null)
-                .build();
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                HttpStatus.UNAUTHORIZED.getReasonPhrase(),
+                "Authentication required or token is invalid: " + authException.getMessage(),
+                LocalDateTime.now(),
+                request.getRequestURI() // Populate path
+        );
 
         try (OutputStream out = response.getOutputStream()) {
-            objectMapper.writeValue(out, apiResponse);
+            objectMapper.writeValue(out, errorResponse);
         } catch (Exception e) {
             logger.error("Error writing unauthorized response: {}", e.getMessage(), e);
         }

@@ -2,7 +2,7 @@ package com.ibra.security.handler;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ibra.dto.ApiResponse;
+import com.ibra.dto.ErrorResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.time.LocalDateTime;
 
 /**
  * Custom AccessDeniedHandler to handle authenticated requests where the user
@@ -41,14 +42,15 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_FORBIDDEN); // 403 Forbidden
 
-        ApiResponse<Object> apiResponse = ApiResponse.builder()
-                .success(false)
-                .message("Access Denied: You do not have sufficient permissions to access this resource.")
-                .data(null)
-                .build();
-
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                HttpStatus.UNAUTHORIZED.getReasonPhrase(),
+                "Access Denied: You do not have sufficient permissions to access this resource.",
+                LocalDateTime.now(),
+                request.getRequestURI()
+        );
         try (OutputStream out = response.getOutputStream()) {
-            objectMapper.writeValue(out, apiResponse);
+            objectMapper.writeValue(out, errorResponse);
         } catch (Exception e) {
             logger.error("Error writing access denied response: {}", e.getMessage(), e);
         }

@@ -39,22 +39,23 @@ public class OrderService {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
-    @Autowired
-    private OrderRepository orderRepository;
+    private final OrderRepository orderRepository;
 
-    @Autowired
-    private OrderItemRepository orderItemRepository;
+    private final OrderItemRepository orderItemRepository;
 
-    @Autowired
-    private OrderMapper orderMapper;
+    private final OrderMapper orderMapper;
 
-    @Autowired
-    private RestaurantServiceClient restaurantServiceClient;
+    private final RestaurantServiceClient restaurantServiceClient;
 
-    @Autowired
-    private OrderEventPublisher orderEventPublisher;
+    private final OrderEventPublisher orderEventPublisher;
 
-
+    public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository, OrderMapper orderMapper, RestaurantServiceClient restaurantServiceClient, OrderEventPublisher orderEventPublisher) {
+        this.orderRepository = orderRepository;
+        this.orderItemRepository = orderItemRepository;
+        this.orderMapper = orderMapper;
+        this.restaurantServiceClient = restaurantServiceClient;
+        this.orderEventPublisher = orderEventPublisher;
+    }
 
 
     // Create new order

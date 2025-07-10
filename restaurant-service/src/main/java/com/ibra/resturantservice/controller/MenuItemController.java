@@ -25,8 +25,11 @@ public class MenuItemController {
 
     private static final Logger logger = LoggerFactory.getLogger(MenuItemController.class);
 
-    @Autowired
-    private MenuItemService menuItemService;
+    private final MenuItemService menuItemService;
+
+    public MenuItemController(MenuItemService menuItemService) {
+        this.menuItemService = menuItemService;
+    }
 
     // Helper method to extract user ID from request headers
     private Long getUserIdFromRequest(HttpServletRequest request) {

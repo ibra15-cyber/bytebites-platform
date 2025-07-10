@@ -27,17 +27,20 @@ public class MenuItemService {
 
     private static final Logger logger = LoggerFactory.getLogger(MenuItemService.class);
 
-    @Autowired
-    private MenuItemRepository menuItemRepository;
+    private final MenuItemRepository menuItemRepository;
 
-    @Autowired
-    private RestaurantRepository restaurantRepository;
+    private final RestaurantRepository restaurantRepository;
 
-    @Autowired
-    private MenuItemMapper menuItemMapper;
+    private final MenuItemMapper menuItemMapper;
 
-    @Autowired
-    private RestaurantService restaurantService;
+    private final RestaurantService restaurantService;
+
+    public MenuItemService(MenuItemRepository menuItemRepository, RestaurantRepository restaurantRepository, MenuItemMapper menuItemMapper, RestaurantService restaurantService) {
+        this.menuItemRepository = menuItemRepository;
+        this.restaurantRepository = restaurantRepository;
+        this.menuItemMapper = menuItemMapper;
+        this.restaurantService = restaurantService;
+    }
 
     // Create menu item
     public MenuItemDTO createMenuItem(Long restaurantId, CreateMenuItemRequest request, Long ownerId) {

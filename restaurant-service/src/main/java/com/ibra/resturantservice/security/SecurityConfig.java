@@ -39,9 +39,9 @@ public class SecurityConfig {
 
 
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(HttpMethod.GET, "/api/restaurants").permitAll() // Get all active restaurants
-                        .requestMatchers(HttpMethod.GET, "/api/restaurants/{id}").permitAll() // Get restaurant by ID
-                        .requestMatchers(HttpMethod.GET, "/api/restaurants/search").permitAll() // Search restaurants by name/address
+                        .requestMatchers(HttpMethod.GET, "/api/restaurants").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/restaurants/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/restaurants/search").permitAll()
                          .anyRequest().authenticated()
                 )
                 .addFilterBefore(headerBasedAuthFilter, BasicAuthenticationFilter.class)

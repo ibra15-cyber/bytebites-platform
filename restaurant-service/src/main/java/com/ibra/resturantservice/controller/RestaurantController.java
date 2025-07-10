@@ -23,8 +23,11 @@ public class RestaurantController {
 
     private static final Logger logger = LoggerFactory.getLogger(RestaurantController.class);
 
-    @Autowired
-    private RestaurantService restaurantService;
+    private final RestaurantService restaurantService;
+
+    public RestaurantController(RestaurantService restaurantService) {
+        this.restaurantService = restaurantService;
+    }
 
     // Public endpoint - Get all active restaurants
     @GetMapping

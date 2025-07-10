@@ -35,13 +35,8 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest loginRequest) {
-        try {
             AuthResponse authResponse = authService.loginUser(loginRequest);
             return ResponseEntity.ok(new ApiResponse<>(true, "Login successful", authResponse));
-
-        } catch (AuthenticationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse<>(false, "Invalid email or password", null));
-        }
     }
 
     @GetMapping("/profile")
