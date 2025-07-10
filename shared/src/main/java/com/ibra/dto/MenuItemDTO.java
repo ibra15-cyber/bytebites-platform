@@ -21,7 +21,6 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class MenuItemDTO {
 
-    // Getters and Setters
     private Long id;
 
     @NotBlank(message = "Item name is required")

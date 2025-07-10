@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class OrderItemDTO {
 
-    // Getters and Setters
     private Long id;
     private Long menuItemId;
     private String itemName;
