@@ -137,6 +137,8 @@ public class OrderService {
         logger.info("Order created successfully with ID: {}", savedOrder.getId());
         return orderMapper.toDTO(savedOrder);
     }
+
+
     // Get orders by customer with pagination
     @Transactional(readOnly = true)
     public Page<OrderDTO> getOrdersByCustomer(Long customerId, Pageable pageable) {

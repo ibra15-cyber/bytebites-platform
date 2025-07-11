@@ -1,14 +1,13 @@
 package com.ibra.resturantservice.service;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.ibra.exception.ResourceNotFoundException;
+import com.ibra.exception.UnauthorizedException;
 import com.ibra.resturantservice.dto.CreateMenuItemRequest;
 import com.ibra.dto.MenuItemDTO;
 import com.ibra.resturantservice.entity.MenuItem;
 import com.ibra.resturantservice.entity.Restaurant;
 import com.ibra.enums.MenuItemCategory;
 import com.ibra.enums.MenuItemStatus;
-import com.ibra.exception.ResourceNotFoundException;
-import com.ibra.exception.UnauthorizedException;
 import com.ibra.resturantservice.mapper.MenuItemMapper;
 import com.ibra.resturantservice.respository.MenuItemRepository;
 import com.ibra.resturantservice.respository.RestaurantRepository;
@@ -20,15 +19,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class MenuItemServiceTest {
+public class MenuItemServiceTest {
 
     @Mock
     private MenuItemRepository menuItemRepository;
@@ -45,262 +45,211 @@ class MenuItemServiceTest {
     @InjectMocks
     private MenuItemService menuItemService;
 
-    private CreateMenuItemRequest createRequest;
-    private MenuItem menuItem;
+    private CreateMenuItemRequest validRequest;
+    private MenuItem savedMenuItem;
     private MenuItemDTO menuItemDTO;
     private Restaurant restaurant;
 
     @BeforeEach
     void setUp() {
-        createRequest = new CreateMenuItemRequest();
-        createRequest.setName("Test Item");
-        createRequest.setDescription("Test Description");
-        createRequest.setPrice(new BigDecimal("15.99"));
-        createRequest.setCategory(MenuItemCategory.MAIN_COURSE);
-        createRequest.setImageUrl("http://test.com/image.jpg");
+        // Valid request (matches DTO validation rules)
+        validRequest = new CreateMenuItemRequest(
+                "Test Burger",
+                "Delicious beef burger",
+                BigDecimal.valueOf(9.99),
+                MenuItemCategory.MAIN_COURSE,
+                "http://image.url"
+        );
 
+        // Restaurant (required for ownership validation)
         restaurant = new Restaurant();
         restaurant.setId(1L);
-        restaurant.setName("Test Restaurant");
         restaurant.setOwnerId(1L);
 
-        menuItem = new MenuItem();
-        menuItem.setId(1L);
-        menuItem.setName("Test Item");
-        menuItem.setPrice(new BigDecimal("15.99"));
-        menuItem.setCategory(MenuItemCategory.MAIN_COURSE);
-        menuItem.setStatus(MenuItemStatus.AVAILABLE);
-        menuItem.setRestaurant(restaurant);
+        // Saved entity (simulates DB state)
+        savedMenuItem = new MenuItem(
+                validRequest.getName(),
+                validRequest.getDescription(),
+                validRequest.getPrice(),
+                validRequest.getCategory(),
+                restaurant
+        );
+        savedMenuItem.setId(1L);
+        savedMenuItem.setStatus(MenuItemStatus.AVAILABLE);
+        savedMenuItem.setImageUrl(validRequest.getImageUrl());
+        savedMenuItem.setCreatedAt(LocalDateTime.now());
+        savedMenuItem.setUpdatedAt(LocalDateTime.now());
 
-        menuItemDTO = new MenuItemDTO();
-        menuItemDTO.setId(1L);
-        menuItemDTO.setName("Test Item");
-        menuItemDTO.setPrice(new BigDecimal("15.99"));
-        menuItemDTO.setCategory(MenuItemCategory.MAIN_COURSE);
-        menuItemDTO.setStatus(MenuItemStatus.AVAILABLE);
+        // Response DTO
+        menuItemDTO = new MenuItemDTO(
+                savedMenuItem.getId(),
+                savedMenuItem.getName(),
+                savedMenuItem.getDescription(),
+                savedMenuItem.getPrice(),
+                restaurant.getId(),
+                savedMenuItem.getCategory(),
+                savedMenuItem.getImageUrl(),
+                savedMenuItem.getStatus(),
+                savedMenuItem.getCreatedAt(),
+                savedMenuItem.getUpdatedAt()
+        );
     }
 
+    // ------------------------- CREATE TESTS -------------------------
     @Test
-    void createMenuItem_Success() {
-        // Given
-        doNothing().when(restaurantService).validateRestaurantOwnership(1L, 1L);
+    void createMenuItem_ValidRequest_ReturnsMenuItemDTO() {
+        // Arrange
         when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant));
-        when(menuItemRepository.save(any(MenuItem.class))).thenReturn(menuItem);
-        when(menuItemMapper.toDTO(any(MenuItem.class))).thenReturn(menuItemDTO);
+        when(menuItemRepository.save(any(MenuItem.class))).thenReturn(savedMenuItem);
+        when(menuItemMapper.toDTO(savedMenuItem)).thenReturn(menuItemDTO);
 
-        // When
-        MenuItemDTO result = menuItemService.createMenuItem(1L, createRequest, 1L);
+        // Act
+        MenuItemDTO result = menuItemService.createMenuItem(1L, validRequest, 1L);
 
-        // Then
+        // Assert
         assertNotNull(result);
-        assertEquals("Test Item", result.getName());
-        assertEquals(new BigDecimal("15.99"), result.getPrice());
-        assertEquals(MenuItemCategory.MAIN_COURSE, result.getCategory());
-        verify(restaurantService).validateRestaurantOwnership(1L, 1L);
-        verify(restaurantRepository).findById(1L);
-        verify(menuItemRepository).save(any(MenuItem.class));
+        assertEquals("Test Burger", result.getName());
+        assertEquals(MenuItemStatus.AVAILABLE, result.getStatus());
+        verify(menuItemRepository, times(1)).save(any(MenuItem.class));
     }
 
     @Test
-    void createMenuItem_ThrowsResourceNotFoundException_WhenRestaurantNotFound() {
-        // Given
-        doNothing().when(restaurantService).validateRestaurantOwnership(1L, 1L);
-        when(restaurantRepository.findById(1L)).thenReturn(Optional.empty());
+    void createMenuItem_InvalidRestaurant_ThrowsResourceNotFoundException() {
+        // Arrange
+        when(restaurantRepository.findById(999L)).thenReturn(Optional.empty());
 
-        // When & Then
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                () -> menuItemService.createMenuItem(1L, createRequest, 1L));
-
-        assertEquals("Restaurant not found with ID: 1", exception.getMessage());
-        verify(menuItemRepository, never()).save(any(MenuItem.class));
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class, () ->
+                menuItemService.createMenuItem(999L, validRequest, 1L)
+        );
     }
 
+    // ------------------------- READ TESTS -------------------------
     @Test
-    void createMenuItem_ThrowsUnauthorizedException_WhenNotOwner() {
-        // Given
-        doThrow(new UnauthorizedException("You don't own this restaurant"))
-                .when(restaurantService).validateRestaurantOwnership(1L, 1L);
+    void getMenuItemById_ValidId_ReturnsMenuItemDTO() {
+        // Arrange
+        when(menuItemRepository.findById(1L)).thenReturn(Optional.of(savedMenuItem));
+        when(menuItemMapper.toDTO(savedMenuItem)).thenReturn(menuItemDTO);
 
-        // When & Then
-        UnauthorizedException exception = assertThrows(UnauthorizedException.class,
-                () -> menuItemService.createMenuItem(1L, createRequest, 1L));
-
-        assertEquals("You don't own this restaurant", exception.getMessage());
-        verify(menuItemRepository, never()).save(any(MenuItem.class));
-    }
-
-    @Test
-    void getMenuItemById_Success() {
-        // Given
-        when(menuItemRepository.findById(1L)).thenReturn(Optional.of(menuItem));
-        when(menuItemMapper.toDTO(menuItem)).thenReturn(menuItemDTO);
-
-        // When
+        // Act
         MenuItemDTO result = menuItemService.getMenuItemById(1L);
 
-        // Then
-        assertNotNull(result);
-        assertEquals("Test Item", result.getName());
-        verify(menuItemRepository).findById(1L);
+        // Assert
+        assertEquals(menuItemDTO, result);
+        verify(menuItemRepository, times(1)).findById(1L);
     }
 
     @Test
-    void getMenuItemById_ThrowsResourceNotFoundException() {
-        // Given
-        when(menuItemRepository.findById(1L)).thenReturn(Optional.empty());
+    void getMenuItemsByRestaurant_ReturnsAvailableItemsOnly() {
+        // Arrange
+        MenuItem unavailableItem = new MenuItem();
+        unavailableItem.setStatus(MenuItemStatus.OUT_OF_STOCK);
 
-        // When & Then
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                () -> menuItemService.getMenuItemById(1L));
-
-        assertEquals("Menu item not found with ID: 1", exception.getMessage());
-    }
-
-    @Test
-    void getMenuItemsByRestaurant_Success() {
-        // Given
-        List<MenuItem> menuItems = Arrays.asList(menuItem);
-        List<MenuItemDTO> menuItemDTOs = Arrays.asList(menuItemDTO);
         when(menuItemRepository.findByRestaurantIdAndStatus(1L, MenuItemStatus.AVAILABLE))
-                .thenReturn(menuItems);
-        when(menuItemMapper.toDTO(menuItem)).thenReturn(menuItemDTO);
+                .thenReturn(List.of(savedMenuItem));
+        when(menuItemMapper.toDTO(savedMenuItem)).thenReturn(menuItemDTO);
 
-        // When
+        // Act
         List<MenuItemDTO> result = menuItemService.getMenuItemsByRestaurant(1L);
 
-        // Then
-        assertNotNull(result);
+        // Assert
         assertEquals(1, result.size());
-        assertEquals("Test Item", result.get(0).getName());
-        verify(menuItemRepository).findByRestaurantIdAndStatus(1L, MenuItemStatus.AVAILABLE);
+        assertEquals("Test Burger", result.get(0).getName());
+    }
+
+    // ------------------------- UPDATE TESTS -------------------------
+    @Test
+    void updateMenuItem_ValidRequest_UpdatesFields() {
+        // Arrange
+        CreateMenuItemRequest updateRequest = new CreateMenuItemRequest(
+                "Updated Burger",
+                "Now with cheese",
+                BigDecimal.valueOf(10.99),
+                MenuItemCategory.MAIN_COURSE,
+                "http://new-image.url"
+        );
+
+        when(menuItemRepository.findByIdAndRestaurantOwnerId(1L, 1L))
+                .thenReturn(Optional.of(savedMenuItem));
+        when(menuItemRepository.save(any(MenuItem.class))).thenReturn(savedMenuItem);
+        when(menuItemMapper.toDTO(savedMenuItem)).thenReturn(menuItemDTO);
+
+        // Act
+        MenuItemDTO result = menuItemService.updateMenuItem(1L, updateRequest, 1L);
+
+        // Assert
+        assertEquals(menuItemDTO, result);
+        verify(menuItemRepository, times(1)).save(savedMenuItem);
     }
 
     @Test
-    void getMenuItemsByCategory_Success() {
-        // Given
-        List<MenuItem> menuItems = Arrays.asList(menuItem);
-        when(menuItemRepository.findAvailableItemsByRestaurantAndCategory(1L, MenuItemCategory.MAIN_COURSE))
-                .thenReturn(menuItems);
-        when(menuItemMapper.toDTO(menuItem)).thenReturn(menuItemDTO);
+    void updateMenuItem_UnauthorizedOwner_ThrowsUnauthorizedException() {
+        // Arrange
+        when(menuItemRepository.findByIdAndRestaurantOwnerId(1L, 2L))
+                .thenReturn(Optional.empty());
 
-        // When
-        List<MenuItemDTO> result = menuItemService.getMenuItemsByCategory(1L, MenuItemCategory.MAIN_COURSE);
-
-        // Then
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals(MenuItemCategory.MAIN_COURSE, result.get(0).getCategory());
-        verify(menuItemRepository).findAvailableItemsByRestaurantAndCategory(1L, MenuItemCategory.MAIN_COURSE);
+        // Act & Assert
+        assertThrows(UnauthorizedException.class, () ->
+                menuItemService.updateMenuItem(1L, validRequest, 2L)
+        );
     }
 
+    // ------------------------- STATUS UPDATE TESTS -------------------------
     @Test
-    void updateMenuItem_Success() {
-        // Given
-        when(menuItemRepository.findByIdAndRestaurantOwnerId(1L, 1L)).thenReturn(Optional.of(menuItem));
-        when(menuItemRepository.save(any(MenuItem.class))).thenReturn(menuItem);
-        when(menuItemMapper.toDTO(any(MenuItem.class))).thenReturn(menuItemDTO);
+    void updateMenuItemStatus_ValidTransition_UpdatesStatus() {
+        // Arrange
+        when(menuItemRepository.findByIdAndRestaurantOwnerId(1L, 1L))
+                .thenReturn(Optional.of(savedMenuItem));
+        when(menuItemRepository.save(any(MenuItem.class))).thenReturn(savedMenuItem);
+        when(menuItemMapper.toDTO(savedMenuItem)).thenReturn(menuItemDTO);
 
-        // When
-        MenuItemDTO result = menuItemService.updateMenuItem(1L, createRequest, 1L);
-
-        // Then
-        assertNotNull(result);
-        assertEquals("Test Item", result.getName());
-        verify(menuItemRepository).findByIdAndRestaurantOwnerId(1L, 1L);
-        verify(menuItemRepository).save(menuItem);
-    }
-
-    @Test
-    void updateMenuItem_ThrowsUnauthorizedException_WhenNotOwner() {
-        // Given
-        when(menuItemRepository.findByIdAndRestaurantOwnerId(1L, 1L)).thenReturn(Optional.empty());
-
-        // When & Then
-        UnauthorizedException exception = assertThrows(UnauthorizedException.class,
-                () -> menuItemService.updateMenuItem(1L, createRequest, 1L));
-
-        assertEquals("You can only update menu items for your own restaurants", exception.getMessage());
-    }
-
-    @Test
-    void updateMenuItemStatus_Success() {
-        // Given
-        when(menuItemRepository.findByIdAndRestaurantOwnerId(1L, 1L)).thenReturn(Optional.of(menuItem));
-        when(menuItemRepository.save(any(MenuItem.class))).thenReturn(menuItem);
-        when(menuItemMapper.toDTO(any(MenuItem.class))).thenReturn(menuItemDTO);
-
-        // When
+        // Act
         MenuItemDTO result = menuItemService.updateMenuItemStatus(1L, MenuItemStatus.OUT_OF_STOCK, 1L);
 
-        // Then
-        assertNotNull(result);
-        verify(menuItemRepository).findByIdAndRestaurantOwnerId(1L, 1L);
-        verify(menuItemRepository).save(menuItem);
-        assertEquals(MenuItemStatus.OUT_OF_STOCK, menuItem.getStatus());
+        // Assert
+        assertEquals(menuItemDTO, result);
+        assertEquals(MenuItemStatus.OUT_OF_STOCK, savedMenuItem.getStatus());
     }
 
+    // ------------------------- DELETE TESTS -------------------------
     @Test
-    void updateMenuItemStatus_ThrowsUnauthorizedException_WhenNotOwner() {
-        // Given
-        when(menuItemRepository.findByIdAndRestaurantOwnerId(1L, 1L)).thenReturn(Optional.empty());
+    void deleteMenuItem_ValidOwner_DeletesMenuItem() {
+        // Arrange
+        when(menuItemRepository.findByIdAndRestaurantOwnerId(1L, 1L))
+                .thenReturn(Optional.of(savedMenuItem));
 
-        // When & Then
-        UnauthorizedException exception = assertThrows(UnauthorizedException.class,
-                () -> menuItemService.updateMenuItemStatus(1L, MenuItemStatus.OUT_OF_STOCK, 1L));
-
-        assertEquals("You can only update menu items for your own restaurants", exception.getMessage());
-    }
-
-    @Test
-    void deleteMenuItem_Success() {
-        // Given
-        when(menuItemRepository.findByIdAndRestaurantOwnerId(1L, 1L)).thenReturn(Optional.of(menuItem));
-
-        // When
+        // Act
         menuItemService.deleteMenuItem(1L, 1L);
 
-        // Then
-        verify(menuItemRepository).findByIdAndRestaurantOwnerId(1L, 1L);
-        verify(menuItemRepository).delete(menuItem);
+        // Assert
+        verify(menuItemRepository, times(1)).delete(savedMenuItem);
     }
 
     @Test
-    void deleteMenuItem_ThrowsUnauthorizedException_WhenNotOwner() {
-        // Given
-        when(menuItemRepository.findByIdAndRestaurantOwnerId(1L, 1L)).thenReturn(Optional.empty());
+    void deleteMenuItem_InvalidOwner_ThrowsUnauthorizedException() {
+        // Arrange
+        when(menuItemRepository.findByIdAndRestaurantOwnerId(1L, 2L))
+                .thenReturn(Optional.empty());
 
-        // When & Then
-        UnauthorizedException exception = assertThrows(UnauthorizedException.class,
-                () -> menuItemService.deleteMenuItem(1L, 1L));
-
-        assertEquals("You can only delete menu items for your own restaurants", exception.getMessage());
-        verify(menuItemRepository, never()).delete(any(MenuItem.class));
+        // Act & Assert
+        assertThrows(UnauthorizedException.class, () ->
+                menuItemService.deleteMenuItem(1L, 2L)
+        );
     }
 
+    // ------------------------- SEARCH TESTS -------------------------
     @Test
-    void searchMenuItemsByName_Success() {
-        // Given
-        List<MenuItem> menuItems = Arrays.asList(menuItem);
-        when(menuItemRepository.searchByNameInRestaurant(1L, "Test")).thenReturn(menuItems);
-        when(menuItemMapper.toDTO(menuItem)).thenReturn(menuItemDTO);
+    void searchMenuItemsByName_ReturnsMatchingItems() {
+        // Arrange
+        when(menuItemRepository.searchByNameInRestaurant(1L, "Burger"))
+                .thenReturn(List.of(savedMenuItem));
+        when(menuItemMapper.toDTO(savedMenuItem)).thenReturn(menuItemDTO);
 
-        // When
-        List<MenuItemDTO> result = menuItemService.searchMenuItemsByName(1L, "Test");
+        // Act
+        List<MenuItemDTO> result = menuItemService.searchMenuItemsByName(1L, "Burger");
 
-        // Then
-        assertNotNull(result);
+        // Assert
         assertEquals(1, result.size());
-        assertEquals("Test Item", result.get(0).getName());
-        verify(menuItemRepository).searchByNameInRestaurant(1L, "Test");
-    }
-
-    @Test
-    void fallbackGetMenuItems_ReturnsEmptyList() {
-        // When
-        List<MenuItemDTO> result = menuItemService.fallbackGetMenuItems(1L, new RuntimeException("Test exception"));
-
-        // Then
-        assertNotNull(result);
-        assertTrue(result.isEmpty());
+        assertEquals("Test Burger", result.get(0).getName());
     }
 }

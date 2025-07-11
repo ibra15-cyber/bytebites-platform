@@ -9,26 +9,35 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Value; // Import @Value
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMQConfig {
 
-    // MUST match order service exchange name
-    public static final String ORDER_EXCHANGE = "order.topic.exchange";
+    // Inject properties from application.yml
+    @Value("${app.rabbitmq.order-exchange-name}")
+    private String orderExchangeName;
 
-    // Notification-specific queue
-    public static final String NOTIFICATION_QUEUE = "notification.order.queue";
+    @Value("${app.rabbitmq.notification-queue-name}")
+    private String notificationQueueName;
+
+    @Value("${app.rabbitmq.notification-routing-key-all-orders}")
+    private String notificationRoutingKeyAllOrders;
+
 
     @Bean
     public TopicExchange orderExchange() {
-        return new TopicExchange(ORDER_EXCHANGE);
+        // Declares the exchange that the Order Service publishes to.
+        // It must match the exchange declared by the producer.
+        return new TopicExchange(orderExchangeName); // Use injected value
     }
 
     @Bean
     public Queue notificationQueue() {
-        return new Queue(NOTIFICATION_QUEUE, true);
+        // Declares this service's specific queue.
+        return new Queue(notificationQueueName, true); // Use injected value, 'true' for durable
     }
 
     /**
@@ -40,7 +49,7 @@ public class RabbitMQConfig {
         return BindingBuilder
                 .bind(notificationQueue())
                 .to(orderExchange())
-                .with("order.event.#"); // Listen to all order events
+                .with(notificationRoutingKeyAllOrders); // Use injected value
     }
 
     @Bean

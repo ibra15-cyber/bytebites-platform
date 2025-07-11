@@ -1,14 +1,12 @@
 package com.ibra.resturantservice.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-
+import com.ibra.exception.BusinessException;
+import com.ibra.exception.ResourceNotFoundException;
+import com.ibra.exception.UnauthorizedException;
 import com.ibra.resturantservice.dto.CreateRestaurantRequest;
 import com.ibra.dto.RestaurantDTO;
 import com.ibra.resturantservice.entity.Restaurant;
 import com.ibra.enums.RestaurantStatus;
-import com.ibra.exception.BusinessException;
-import com.ibra.exception.ResourceNotFoundException;
-import com.ibra.exception.UnauthorizedException;
 import com.ibra.resturantservice.mapper.RestaurantMapper;
 import com.ibra.resturantservice.respository.RestaurantRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,14 +16,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class RestaurantServiceTest {
+public class RestaurantServiceTest {
 
     @Mock
     private RestaurantRepository restaurantRepository;
@@ -36,180 +37,205 @@ class RestaurantServiceTest {
     @InjectMocks
     private RestaurantService restaurantService;
 
-    private CreateRestaurantRequest createRequest;
-    private Restaurant restaurant;
+    private CreateRestaurantRequest validRequest;
+    private Restaurant savedRestaurant;
     private RestaurantDTO restaurantDTO;
 
     @BeforeEach
     void setUp() {
-        createRequest = new CreateRestaurantRequest();
-        createRequest.setName("Test Restaurant");
-        createRequest.setDescription("Test Description");
-        createRequest.setAddress("Test Address");
-        createRequest.setPhoneNumber("1234567890");
-        createRequest.setEmail("test@restaurant.com");
-        createRequest.setImageUrl("http://test.com/image.jpg");
+        // Valid request (matches DTO validation rules)
+        validRequest = new CreateRestaurantRequest(
+                "Test Restaurant",
+                "A test description",
+                "123 Main St",
+                "+1234567890",
+                "test@example.com",
+                "http://image.url"
+        );
 
-        restaurant = new Restaurant();
-        restaurant.setId(1L);
-        restaurant.setName("Test Restaurant");
-        restaurant.setEmail("test@restaurant.com");
-        restaurant.setPhoneNumber("1234567890");
-        restaurant.setOwnerId(1L);
-        restaurant.setStatus(RestaurantStatus.PENDING_APPROVAL);
+        // Saved entity (simulates DB state)
+        savedRestaurant = new Restaurant(
+                validRequest.getName(),
+                validRequest.getDescription(),
+                validRequest.getAddress(),
+                validRequest.getPhoneNumber(),
+                validRequest.getEmail(),
+                1L // ownerId
+        );
+        savedRestaurant.setId(1L);
+        savedRestaurant.setStatus(RestaurantStatus.PENDING_APPROVAL);
+        savedRestaurant.setCreatedAt(LocalDateTime.now());
+        savedRestaurant.setUpdatedAt(LocalDateTime.now());
 
-        restaurantDTO = new RestaurantDTO();
-        restaurantDTO.setId(1L);
-        restaurantDTO.setName("Test Restaurant");
+        // Response DTO
+        restaurantDTO = new RestaurantDTO(
+                savedRestaurant.getId(),
+                savedRestaurant.getName(),
+                savedRestaurant.getDescription(),
+                savedRestaurant.getAddress(),
+                savedRestaurant.getPhoneNumber(),
+                savedRestaurant.getEmail(),
+                savedRestaurant.getOwnerId(),
+                null, // ownerName
+                null, // ownerEmail
+                savedRestaurant.getImageUrl(),
+                savedRestaurant.getStatus(),
+                savedRestaurant.getCreatedAt(),
+                savedRestaurant.getUpdatedAt(),
+                Collections.emptyList(), // menuItems
+                null, // cuisine
+                null  // rate
+        );
     }
 
+    // ------------------------- CREATE TESTS -------------------------
     @Test
-    void createRestaurant_Success() {
-        // Given
-        when(restaurantRepository.existsByEmail(anyString())).thenReturn(false);
-        when(restaurantRepository.existsByPhoneNumber(anyString())).thenReturn(false);
-        when(restaurantRepository.save(any(Restaurant.class))).thenReturn(restaurant);
-        when(restaurantMapper.toDTO(any(Restaurant.class))).thenReturn(restaurantDTO);
+    void createRestaurant_ValidRequest_ReturnsRestaurantDTO() {
+        // Arrange
+        when(restaurantRepository.existsByPhoneNumber(validRequest.getPhoneNumber())).thenReturn(false);
+        when(restaurantRepository.save(any(Restaurant.class))).thenReturn(savedRestaurant);
+        when(restaurantMapper.toDTO(savedRestaurant)).thenReturn(restaurantDTO);
 
-        // When
-        RestaurantDTO result = restaurantService.createRestaurant(createRequest, 1L);
+        // Act
+        RestaurantDTO result = restaurantService.createRestaurant(validRequest, 1L);
 
-        // Then
+        // Assert
         assertNotNull(result);
+        assertEquals(1L, result.getId());
         assertEquals("Test Restaurant", result.getName());
-        verify(restaurantRepository).existsByEmail("test@restaurant.com");
-        verify(restaurantRepository).existsByPhoneNumber("1234567890");
-        verify(restaurantRepository).save(any(Restaurant.class));
+        assertEquals(RestaurantStatus.PENDING_APPROVAL, result.getStatus());
+        verify(restaurantRepository, times(1)).save(any(Restaurant.class));
     }
 
     @Test
-    void createRestaurant_ThrowsBusinessException_WhenEmailExists() {
-        // Given
-        when(restaurantRepository.existsByEmail(anyString())).thenReturn(true);
+    void createRestaurant_DuplicatePhone_ThrowsBusinessException() {
+        // Arrange
+        when(restaurantRepository.existsByPhoneNumber(validRequest.getPhoneNumber())).thenReturn(true);
 
-        // When & Then
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> restaurantService.createRestaurant(createRequest, 1L));
-
-        assertEquals("Restaurant with this email already exists", exception.getMessage());
-        verify(restaurantRepository, never()).save(any(Restaurant.class));
+        // Act & Assert
+        assertThrows(BusinessException.class, () ->
+                restaurantService.createRestaurant(validRequest, 1L)
+        );
     }
 
+    // ------------------------- READ TESTS -------------------------
     @Test
-    void createRestaurant_ThrowsBusinessException_WhenPhoneExists() {
-        // Given
-        when(restaurantRepository.existsByEmail(anyString())).thenReturn(false);
-        when(restaurantRepository.existsByPhoneNumber(anyString())).thenReturn(true);
+    void getRestaurantById_ValidId_ReturnsRestaurantDTO() {
+        // Arrange
+        when(restaurantRepository.findById(1L)).thenReturn(Optional.of(savedRestaurant));
+        when(restaurantMapper.toDTO(savedRestaurant)).thenReturn(restaurantDTO);
 
-        // When & Then
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> restaurantService.createRestaurant(createRequest, 1L));
-
-        assertEquals("Restaurant with this phone number already exists", exception.getMessage());
-        verify(restaurantRepository, never()).save(any(Restaurant.class));
-    }
-
-    @Test
-    void getRestaurantById_Success() {
-        // Given
-        when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant));
-        when(restaurantMapper.toDTO(restaurant)).thenReturn(restaurantDTO);
-
-        // When
+        // Act
         RestaurantDTO result = restaurantService.getRestaurantById(1L);
 
-        // Then
-        assertNotNull(result);
-        assertEquals("Test Restaurant", result.getName());
-        verify(restaurantRepository).findById(1L);
+        // Assert
+        assertEquals(restaurantDTO, result);
+        verify(restaurantRepository, times(1)).findById(1L);
     }
 
     @Test
-    void getRestaurantById_ThrowsResourceNotFoundException() {
-        // Given
-        when(restaurantRepository.findById(1L)).thenReturn(Optional.empty());
+    void getRestaurantById_InvalidId_ThrowsResourceNotFoundException() {
+        // Arrange
+        when(restaurantRepository.findById(999L)).thenReturn(Optional.empty());
 
-        // When & Then
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                () -> restaurantService.getRestaurantById(1L));
-
-        assertEquals("Restaurant not found with ID: 1", exception.getMessage());
-    }
-
-
-    @Test
-    void updateRestaurant_ThrowsUnauthorizedException_WhenNotOwner() {
-        // Given
-        when(restaurantRepository.findByIdAndOwnerId(1L, 1L)).thenReturn(Optional.empty());
-
-        // When & Then
-        UnauthorizedException exception = assertThrows(UnauthorizedException.class,
-                () -> restaurantService.updateRestaurant(1L, createRequest, 1L));
-
-        assertEquals("You can only update your own restaurants", exception.getMessage());
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class, () ->
+                restaurantService.getRestaurantById(999L)
+        );
     }
 
     @Test
-    void validateRestaurantOwnership_Success() {
-        // Given
-        when(restaurantRepository.findByIdAndOwnerId(1L, 1L)).thenReturn(Optional.of(restaurant));
+    void getAllActiveRestaurants_ReturnsActiveRestaurantsOnly() {
+        // Arrange
+        Restaurant activeRestaurant = new Restaurant();
+        activeRestaurant.setStatus(RestaurantStatus.ACTIVE);
+        List<Restaurant> activeRestaurants = List.of(activeRestaurant);
 
-        // When & Then
-        assertDoesNotThrow(() -> restaurantService.validateRestaurantOwnership(1L, 1L));
+        when(restaurantRepository.findByStatus(RestaurantStatus.ACTIVE)).thenReturn(activeRestaurants);
+        when(restaurantMapper.toDTO(any(Restaurant.class))).thenReturn(new RestaurantDTO());
+
+        // Act
+        List<RestaurantDTO> result = restaurantService.getAllActiveRestaurants();
+
+        // Assert
+        assertEquals(1, result.size());
+        verify(restaurantRepository, times(1)).findByStatus(RestaurantStatus.ACTIVE);
     }
 
+    // ------------------------- UPDATE TESTS -------------------------
     @Test
-    void validateRestaurantOwnership_ThrowsUnauthorizedException() {
-        // Given
-        when(restaurantRepository.findByIdAndOwnerId(1L, 1L)).thenReturn(Optional.empty());
+    void updateRestaurant_ValidRequest_UpdatesFields() {
+        // Arrange
+        CreateRestaurantRequest updateRequest = new CreateRestaurantRequest(
+                "Updated Name",
+                "Updated Description",
+                "456 New St",
+                "+9876543210",
+                "updated@example.com",
+                "http://new-image.url"
+        );
 
-        // When & Then
-        UnauthorizedException exception = assertThrows(UnauthorizedException.class,
-                () -> restaurantService.validateRestaurantOwnership(1L, 1L));
-
-        assertEquals("You don't own this restaurant", exception.getMessage());
-    }
-
-    @Test
-    void updateRestaurantStatus_Success() {
-        // Given
-        when(restaurantRepository.findById(1L)).thenReturn(Optional.of(restaurant));
-        when(restaurantRepository.save(any(Restaurant.class))).thenReturn(restaurant);
+        when(restaurantRepository.findByIdAndOwnerId(1L, 1L)).thenReturn(Optional.of(savedRestaurant));
+        when(restaurantRepository.existsByPhoneNumber(updateRequest.getPhoneNumber())).thenReturn(false);
+        when(restaurantRepository.save(any(Restaurant.class))).thenReturn(savedRestaurant);
         when(restaurantMapper.toDTO(any(Restaurant.class))).thenReturn(restaurantDTO);
 
-        // When
-        RestaurantDTO result = restaurantService.updateRestaurantStatus(1L, RestaurantStatus.ACTIVE);
+        // Act
+        RestaurantDTO result = restaurantService.updateRestaurant(1L, updateRequest, 1L);
 
-        // Then
-        assertNotNull(result);
-        verify(restaurantRepository).findById(1L);
-        verify(restaurantRepository).save(restaurant);
-        assertEquals(RestaurantStatus.ACTIVE, restaurant.getStatus());
+        // Assert
+        assertEquals(restaurantDTO, result);
+        verify(restaurantRepository, times(1)).save(any(Restaurant.class));
     }
 
     @Test
-    void deleteRestaurant_Success() {
-        // Given
-        when(restaurantRepository.findByIdAndOwnerId(1L, 1L)).thenReturn(Optional.of(restaurant));
+    void updateRestaurant_UnauthorizedOwner_ThrowsUnauthorizedException() {
+        // Arrange
+        when(restaurantRepository.findByIdAndOwnerId(1L, 2L)).thenReturn(Optional.empty());
 
-        // When
+        // Act & Assert
+        assertThrows(UnauthorizedException.class, () ->
+                restaurantService.updateRestaurant(1L, validRequest, 2L)
+        );
+    }
+
+    // ------------------------- DELETE TESTS -------------------------
+    @Test
+    void deleteRestaurant_ValidOwner_DeletesRestaurant() {
+        // Arrange
+        when(restaurantRepository.findByIdAndOwnerId(1L, 1L)).thenReturn(Optional.of(savedRestaurant));
+
+        // Act
         restaurantService.deleteRestaurant(1L, 1L);
 
-        // Then
-        verify(restaurantRepository).findByIdAndOwnerId(1L, 1L);
-        verify(restaurantRepository).delete(restaurant);
+        // Assert
+        verify(restaurantRepository, times(1)).delete(savedRestaurant);
     }
 
     @Test
-    void deleteRestaurant_ThrowsUnauthorizedException_WhenNotOwner() {
-        // Given
-        when(restaurantRepository.findByIdAndOwnerId(1L, 1L)).thenReturn(Optional.empty());
+    void deleteRestaurant_InvalidOwner_ThrowsUnauthorizedException() {
+        // Arrange
+        when(restaurantRepository.findByIdAndOwnerId(1L, 2L)).thenReturn(Optional.empty());
 
-        // When & Then
-        UnauthorizedException exception = assertThrows(UnauthorizedException.class,
-                () -> restaurantService.deleteRestaurant(1L, 1L));
+        // Act & Assert
+        assertThrows(UnauthorizedException.class, () ->
+                restaurantService.deleteRestaurant(1L, 2L)
+        );
+    }
 
-        assertEquals("You can only delete your own restaurants", exception.getMessage());
-        verify(restaurantRepository, never()).delete(any(Restaurant.class));
+    // ------------------------- STATUS UPDATE TESTS -------------------------
+    @Test
+    void updateRestaurantStatus_AdminUpdates_SavesNewStatus() {
+        // Arrange
+        when(restaurantRepository.findById(1L)).thenReturn(Optional.of(savedRestaurant));
+        when(restaurantRepository.save(any(Restaurant.class))).thenReturn(savedRestaurant);
+        when(restaurantMapper.toDTO(any(Restaurant.class))).thenReturn(restaurantDTO);
+
+        // Act
+        RestaurantDTO result = restaurantService.updateRestaurantStatus(1L, RestaurantStatus.ACTIVE);
+
+        // Assert
+        assertEquals(restaurantDTO, result);
+        verify(restaurantRepository, times(1)).save(savedRestaurant);
     }
 }

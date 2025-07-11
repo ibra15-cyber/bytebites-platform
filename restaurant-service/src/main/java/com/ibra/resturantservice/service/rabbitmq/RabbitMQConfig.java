@@ -3,81 +3,79 @@ package com.ibra.resturantservice.service.rabbitmq;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.core.TopicExchange; // Use TopicExchange as defined in Order Service
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Value; // Import @Value
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMQConfig {
 
-    // These constants must match the exchange name used by the Order Service (publisher)
-    // and the queue name configured in restaurant-service.yml for this consumer.
-    public static final String ORDER_EXCHANGE = "order.topic.exchange"; // Must match Order Service's exchange name
-    public static final String RESTAURANT_QUEUE = "restaurant.order.queue"; // This service's dedicated queue name
+    // Inject properties from application.yml
+    @Value("${app.rabbitmq.order-exchange-name}")
+    private String orderExchangeName;
 
-    // Routing keys this service is interested in (must match publisher's keys)
-    public static final String ORDER_ROUTING_KEY_PLACED = "order.event.placed";
-    public static final String ORDER_ROUTING_KEY_STATUS_UPDATED = "order.event.status.updated";
-    public static final String ORDER_ROUTING_KEY_CANCELLED = "order.event.cancelled";
-    public static final String ORDER_ROUTING_KEY_RATED = "order.event.rated";
+    @Value("${app.rabbitmq.restaurant-queue-name}")
+    private String restaurantQueueName;
 
-    /**
-     * Declares the Topic Exchange. This service needs to declare it locally
-     * to bind its queue to it, even if the Order Service is the primary creator.
-     */
+    @Value("${app.rabbitmq.order-routing-key-placed}")
+    private String orderRoutingKeyPlaced;
+
+    @Value("${app.rabbitmq.order-routing-key-status-updated}")
+    private String orderRoutingKeyStatusUpdated;
+
+    @Value("${app.rabbitmq.order-routing-key-cancelled}")
+    private String orderRoutingKeyCancelled;
+
+    @Value("${app.rabbitmq.order-routing-key-rated}")
+    private String orderRoutingKeyRated;
+
+
     @Bean
     public TopicExchange orderExchange() {
-        return new TopicExchange(ORDER_EXCHANGE);
+        // Declares the exchange that the Order Service publishes to.
+        // It must match the exchange declared by the producer.
+        return new TopicExchange(orderExchangeName); // Use injected value
     }
 
-    /**
-     * Declares the queue for the Restaurant Service.
-     * This queue will receive messages routed from the order exchange.
-     */
     @Bean
     public Queue restaurantQueue() {
-        return new Queue(RESTAURANT_QUEUE, true); // Durable queue
+        // Declares this service's specific queue.
+        return new Queue(restaurantQueueName, true); // Use injected value, 'true' for durable
     }
 
-    /**
-     * Binds the Restaurant Queue to the Order Exchange for 'order.event.placed' messages.
-     * This ensures the restaurant service receives new order events.
-     */
+    // Bindings for the restaurant queue to the order exchange for specific events
     @Bean
     public Binding restaurantBindingPlaced(Queue restaurantQueue, TopicExchange orderExchange) {
         return BindingBuilder.bind(restaurantQueue)
                 .to(orderExchange)
-                .with(ORDER_ROUTING_KEY_PLACED);
+                .with(orderRoutingKeyPlaced); // Use injected value
     }
 
-    /**
-     * Binds the Restaurant Queue to the Order Exchange for 'order.event.status.updated' messages.
-     * This ensures the restaurant service receives order status updates.
-     */
     @Bean
     public Binding restaurantBindingStatusUpdated(Queue restaurantQueue, TopicExchange orderExchange) {
         return BindingBuilder.bind(restaurantQueue)
                 .to(orderExchange)
-                .with(ORDER_ROUTING_KEY_STATUS_UPDATED);
+                .with(orderRoutingKeyStatusUpdated); // Use injected value
     }
 
     @Bean
-    public Binding restaurantBindingOrderCancelled(Queue restaurantQueue, TopicExchange orderExchange) {
+    public Binding restaurantBindingCancelled(Queue restaurantQueue, TopicExchange orderExchange) {
         return BindingBuilder.bind(restaurantQueue)
                 .to(orderExchange)
-                .with(ORDER_ROUTING_KEY_CANCELLED);
+                .with(orderRoutingKeyCancelled); // Use injected value
     }
 
     @Bean
-    public Binding restaurantBindingOrderRated(Queue restaurantQueue, TopicExchange orderExchange) {
+    public Binding restaurantBindingRated(Queue restaurantQueue, TopicExchange orderExchange) {
         return BindingBuilder.bind(restaurantQueue)
                 .to(orderExchange)
-                .with(ORDER_ROUTING_KEY_RATED);
+                .with(orderRoutingKeyRated); // Use injected value
     }
 
     /**

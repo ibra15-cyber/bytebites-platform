@@ -18,7 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
-import reactor.core.publisher.Mono; // Import Mono
+import reactor.core.publisher.Mono;
 
 import javax.crypto.SecretKey;
 import java.util.List;
@@ -49,72 +49,94 @@ public class JwtAuthFilter extends AbstractGatewayFilterFactory<JwtAuthFilter.Co
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
             ServerHttpRequest request = exchange.getRequest();
+            String path = request.getURI().getPath();
+            String method = request.getMethod().name();
 
-            final List<String> openApiEndpoints = List.of(
-                    "/auth/register",
-                    "/auth/login",
-                    "/auth/health",
-                    "/api/restaurants",
-                    "/api/restaurants/",
-                    "/api/restaurants/search",
-                    "/api/menu-items/restaurants/",
-                    "/api/menu-items/"
-
+            // Define truly public endpoints, specifying method where necessary
+            // These endpoints will bypass JWT validation
+            final List<String> PUBLIC_GET_ENDPOINTS = List.of(
+                    "/api/restaurants",             // GET /api/restaurants (get all active)
+                    "/api/restaurants/search",      // GET /api/restaurants/search
+                    "/api/restaurants/owner/",      // GET /api/restaurants/owner/{ownerId}
+                    "/api/menu-items/restaurants/", // GET /api/menu-items/restaurants/{restaurantId}/...
+                    "/api/menu-items/"              // GET /api/menu-items/{id} or /api/menu-items (if applicable)
             );
 
-            // Check if the current request path is an open API endpoint
-            Predicate<ServerHttpRequest> isSecured = r -> openApiEndpoints.stream()
-                    .noneMatch(uri -> request.getURI().getPath().contains(uri));
+            final List<String> PUBLIC_POST_ENDPOINTS = List.of(
+                    "/auth/register",
+                    "/auth/login",
+                    "/auth/health"
+            );
 
-            if (isSecured.test(request)) {
-                // Check for Authorization header
-                if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
-                    logger.warn("Missing Authorization header for secured endpoint: {}", request.getURI().getPath());
-                    return Mono.error(new UnauthorizedException("Missing Authorization header"));
+            // Predicate to determine if a request is public and should bypass JWT validation
+            Predicate<ServerHttpRequest> isPublic = r -> {
+                String currentPath = r.getURI().getPath();
+                String currentMethod = r.getMethod().name();
+
+                // Check for public GET endpoints
+                if ("GET".equals(currentMethod)) {
+                    if (PUBLIC_GET_ENDPOINTS.stream().anyMatch(publicPath -> currentPath.startsWith(publicPath))) {
+                        return true;
+                    }
                 }
-
-                String authHeader = request.getHeaders().get(HttpHeaders.AUTHORIZATION).get(0);
-                if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                    logger.warn("Invalid Authorization header format for secured endpoint: {}", request.getURI().getPath());
-                    return Mono.error(new UnauthorizedException("Invalid Authorization header format"));
+                // Check for public POST endpoints
+                else if ("POST".equals(currentMethod)) {
+                    if (PUBLIC_POST_ENDPOINTS.stream().anyMatch(publicPath -> currentPath.startsWith(publicPath))) {
+                        return true;
+                    }
                 }
+                return false;
+            };
 
-                String token = authHeader.substring(7); // Extract JWT token
 
-                try {
-                    // Validate JWT token
-                    Claims claims = Jwts.parser()
-                            .verifyWith(getKey())
-                            .build()
-                            .parseSignedClaims(token)
-                            .getPayload();
-
-                    // Add user information to request headers for downstream services
-                    ServerHttpRequest modifiedRequest = request.mutate()
-                            .header("X-User-Id", claims.get("id", Long.class).toString())
-                            .header("X-User-Email", claims.get("email", String.class))
-                            .header("X-User-Role", claims.get("role", String.class))
-                            .build();
-
-                    logger.debug("JWT validated. Propagating headers for user ID: {} to {}", claims.get("id"), request.getURI().getPath());
-                    return chain.filter(exchange.mutate().request(modifiedRequest).build());
-
-                } catch (ExpiredJwtException e) {
-                    logger.warn("Expired JWT token for {}: {}", request.getURI().getPath(), e.getMessage());
-                    // Throw ExpiredJwtException, which GatewayExceptionHandler will catch
-                    return Mono.error(e);
-                } catch (SignatureException e) {
-                    logger.warn("Invalid JWT signature for {}: {}", request.getURI().getPath(), e.getMessage());
-                    // Throw SignatureException, which GatewayExceptionHandler will catch
-                    return Mono.error(e);
-                } catch (Exception e) {
-                    logger.error("Error validating JWT token for {}: {}", request.getURI().getPath(), e.getMessage(), e);
-                    // For any other general parsing/validation errors, throw a BusinessException or generic RuntimeException
-                    return Mono.error(new BusinessException("Invalid or malformed JWT token. Access denied."));
-                }
+            if (isPublic.test(request)) {
+                logger.debug("Bypassing JWT validation for public endpoint: {} {}", method, path);
+                return chain.filter(exchange);
             }
-            // For unsecured endpoints, just pass the request through
-            return chain.filter(exchange);
+
+            // If the request is not public, it must be secured. Proceed with JWT validation.
+            // Check for Authorization header
+            if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
+                logger.warn("Missing Authorization header for secured endpoint: {} {}", method, path);
+                return Mono.error(new UnauthorizedException("Missing Authorization header"));
+            }
+
+            String authHeader = request.getHeaders().get(HttpHeaders.AUTHORIZATION).get(0);
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                logger.warn("Invalid Authorization header format for secured endpoint: {} {}", method, path);
+                return Mono.error(new UnauthorizedException("Invalid Authorization header format"));
+            }
+
+            String token = authHeader.substring(7); // Extract JWT token
+
+            try {
+                // Validate JWT token
+                Claims claims = Jwts.parser()
+                        .verifyWith(getKey())
+                        .build()
+                        .parseSignedClaims(token)
+                        .getPayload();
+
+                // Add user information to request headers for downstream services
+                ServerHttpRequest modifiedRequest = request.mutate()
+                        .header("X-User-Id", claims.get("id", Long.class).toString())
+                        .header("X-User-Email", claims.get("email", String.class))
+                        .header("X-User-Role", claims.get("role", String.class))
+                        .build();
+
+                logger.debug("JWT validated. Propagating headers for user ID: {} to {}", claims.get("id"), path);
+                return chain.filter(exchange.mutate().request(modifiedRequest).build());
+
+            } catch (ExpiredJwtException e) {
+                logger.warn("Expired JWT token for {}: {}", path, e.getMessage());
+                return Mono.error(e); // Let GlobalExceptionHandler handle this
+            } catch (SignatureException e) {
+                logger.warn("Invalid JWT signature for {}: {}", path, e.getMessage());
+                return Mono.error(e); // Let GlobalExceptionHandler handle this
+            } catch (Exception e) {
+                logger.error("Error validating JWT token for {}: {}", path, e.getMessage(), e);
+                return Mono.error(new BusinessException("Invalid or malformed JWT token. Access denied."));
+            }
         };
     }
 }

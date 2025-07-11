@@ -1,3 +1,4 @@
+
 package com.ibra.orderservice.service.rabbitmq;
 
 import com.ibra.dto.OrderPlacedEvent;
@@ -18,10 +19,12 @@ public class OrderEventPublisher {
     private static final Logger logger = LoggerFactory.getLogger(OrderEventPublisher.class);
 
     private final RabbitTemplate rabbitTemplate;
+    private final RabbitMQConfig rabbitMQConfig; // Inject RabbitMQConfig
 
     @Autowired
-    public OrderEventPublisher(RabbitTemplate rabbitTemplate) {
+    public OrderEventPublisher(RabbitTemplate rabbitTemplate, RabbitMQConfig rabbitMQConfig) {
         this.rabbitTemplate = rabbitTemplate;
+        this.rabbitMQConfig = rabbitMQConfig; // Assign injected config
     }
 
     /**
@@ -35,73 +38,90 @@ public class OrderEventPublisher {
             event.setEventType("ORDER_PLACED"); // Ensure eventType is set for placed orders
 
             logger.info("Publishing ORDER_PLACED event for Order ID: {} to exchange: {} with routing key: {}",
-                    event.getOrderId(), RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_ROUTING_KEY_PLACED);
-            rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_ROUTING_KEY_PLACED, event);
-            logger.info("ORDER_PLACED event published successfully for Order ID: {}", event.getOrderId());
-        } catch (Exception e) {
-            logger.error("Failed to publish ORDER_PLACED event for order: {}", order.getId(), e);
-        }
-    }
+                    event.getOrderId(), rabbitMQConfig.getOrderExchangeName(), rabbitMQConfig.getOrderRoutingKeyPlaced()); // Use injected values
 
-    /**
-     * Publishes an ORDER_CANCELLED event to the RabbitMQ exchange.
-     * @param order The Order entity to publish.
-     */
-    public void publishOrderCancelledEvent(Order order) {
-        try {
-            OrderPlacedEvent event = createOrderPlacedEvent(order);
-            event.setEventType("ORDER_CANCELLED"); // Set event type
-
-            logger.info("Publishing ORDER_CANCELLED event for order: {} to exchange: {} with routing key: {}",
-                    order.getId(), RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_ROUTING_KEY_CANCELLED);
-            rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_ROUTING_KEY_CANCELLED, event);
-            logger.info("ORDER_CANCELLED event published successfully for order: {}", order.getId());
+            rabbitTemplate.convertAndSend(
+                    rabbitMQConfig.getOrderExchangeName(), // Use injected value
+                    rabbitMQConfig.getOrderRoutingKeyPlaced(), // Use injected value
+                    event
+            );
         } catch (Exception e) {
-            logger.error("Failed to publish ORDER_CANCELLED event for order: {}", order.getId(), e);
+            logger.error("Failed to publish ORDER_PLACED event for Order ID: {}", order.getId(), e);
+            // Handle error, e.g., retry, dead-letter queue, or specific exception
         }
     }
 
     /**
      * Publishes an ORDER_STATUS_UPDATED event to the RabbitMQ exchange.
-     * @param order The Order entity to publish.
+     * This method maps the Order entity to the OrderPlacedEvent DTO (reusing for status updates).
+     * @param order The Order entity with updated status.
      */
     public void publishOrderStatusUpdatedEvent(Order order) {
         try {
-            OrderPlacedEvent event = createOrderPlacedEvent(order);
+            OrderPlacedEvent event = createOrderPlacedEvent(order); // Reuse conversion logic
             event.setEventType("ORDER_STATUS_UPDATED"); // Set event type
 
-            logger.info("Publishing ORDER_STATUS_UPDATED event for order: {} to exchange: {} with routing key: {}",
-                    order.getId(), RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_ROUTING_KEY_STATUS_UPDATED);
-            rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_ROUTING_KEY_STATUS_UPDATED, event);
-            logger.info("ORDER_STATUS_UPDATED event published successfully for order: {}", order.getId());
+            logger.info("Publishing ORDER_STATUS_UPDATED event for Order ID: {} to exchange: {} with routing key: {}",
+                    event.getOrderId(), rabbitMQConfig.getOrderExchangeName(), rabbitMQConfig.getOrderRoutingKeyStatusUpdated());
+
+            rabbitTemplate.convertAndSend(
+                    rabbitMQConfig.getOrderExchangeName(),
+                    rabbitMQConfig.getOrderRoutingKeyStatusUpdated(),
+                    event
+            );
         } catch (Exception e) {
-            logger.error("Failed to publish ORDER_STATUS_UPDATED event for order: {}", order.getId(), e);
+            logger.error("Failed to publish ORDER_STATUS_UPDATED event for Order ID: {}", order.getId(), e);
+        }
+    }
+
+    /**
+     * Publishes an ORDER_CANCELLED event to the RabbitMQ exchange.
+     * @param order The Order entity that was cancelled.
+     */
+    public void publishOrderCancelledEvent(Order order) {
+        try {
+            OrderPlacedEvent event = createOrderPlacedEvent(order); // Reuse conversion logic
+            event.setEventType("ORDER_CANCELLED"); // Set event type
+
+            logger.info("Publishing ORDER_CANCELLED event for Order ID: {} to exchange: {} with routing key: {}",
+                    event.getOrderId(), rabbitMQConfig.getOrderExchangeName(), rabbitMQConfig.getOrderRoutingKeyCancelled());
+
+            rabbitTemplate.convertAndSend(
+                    rabbitMQConfig.getOrderExchangeName(),
+                    rabbitMQConfig.getOrderRoutingKeyCancelled(),
+                    event
+            );
+        } catch (Exception e) {
+            logger.error("Failed to publish ORDER_CANCELLED event for Order ID: {}", order.getId(), e);
         }
     }
 
     /**
      * Publishes an ORDER_RATED event to the RabbitMQ exchange.
-     * @param order The Order entity to publish.
+     * @param order The Order entity that was rated.
      */
     public void publishOrderRatedEvent(Order order) {
         try {
-            OrderPlacedEvent event = createOrderPlacedEvent(order);
+            OrderPlacedEvent event = createOrderPlacedEvent(order); // Reuse conversion logic
             event.setEventType("ORDER_RATED"); // Set event type
 
-            logger.info("Publishing ORDER_RATED event for order: {} to exchange: {} with routing key: {}",
-                    order.getId(), RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_ROUTING_KEY_RATED);
-            rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_ROUTING_KEY_RATED, event);
-            logger.info("ORDER_RATED event published successfully for order: {}", order.getId());
+            logger.info("Publishing ORDER_RATED event for Order ID: {} to exchange: {} with routing key: {}",
+                    event.getOrderId(), rabbitMQConfig.getOrderExchangeName(), rabbitMQConfig.getOrderRoutingKeyRated());
+
+            rabbitTemplate.convertAndSend(
+                    rabbitMQConfig.getOrderExchangeName(),
+                    rabbitMQConfig.getOrderRoutingKeyRated(),
+                    event
+            );
         } catch (Exception e) {
-            logger.error("Failed to publish ORDER_RATED event for order: {}", order.getId(), e);
+            logger.error("Failed to publish ORDER_RATED event for Order ID: {}", order.getId(), e);
         }
     }
 
+
     /**
-     * Creates a standardized OrderPlacedEvent from an Order entity.
-     * This helper method ensures consistency in mapping Order entity to OrderPlacedEvent DTO.
-     * @param order The Order entity.
-     * @return An OrderPlacedEvent DTO.
+     * Helper method to convert an Order entity to an OrderPlacedEvent DTO.
+     * This is a simplified conversion. In a real application, you might use MapStruct.
      */
     private OrderPlacedEvent createOrderPlacedEvent(Order order) {
         OrderPlacedEvent event = new OrderPlacedEvent();

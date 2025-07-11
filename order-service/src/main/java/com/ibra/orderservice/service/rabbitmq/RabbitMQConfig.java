@@ -1,5 +1,7 @@
 package com.ibra.orderservice.service.rabbitmq;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
@@ -8,92 +10,109 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Value; // Import @Value
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+@Getter
+@Setter
 @Configuration
 public class RabbitMQConfig {
 
-    // Exchange name
-    public static final String ORDER_EXCHANGE = "order.topic.exchange";
+    // Inject properties from application.yml
+    @Value("${app.rabbitmq.order-exchange-name}")
+    private String orderExchangeName;
 
-    // Queue names
-    public static final String NOTIFICATION_QUEUE = "notification.order.queue";
-    public static final String RESTAURANT_QUEUE = "restaurant.order.queue";
+    @Value("${app.rabbitmq.notification-queue-name}")
+    private String notificationQueueName;
 
-    // Routing keys (Order Service is the producer)
-    public static final String ORDER_ROUTING_KEY_PLACED = "order.event.placed";
-    public static final String ORDER_ROUTING_KEY_CANCELLED = "order.event.cancelled";
-    public static final String ORDER_ROUTING_KEY_STATUS_UPDATED = "order.event.status.updated";
-    public static final String ORDER_ROUTING_KEY_RATED = "order.event.rated";
+    @Value("${app.rabbitmq.restaurant-queue-name}")
+    private String restaurantQueueName;
 
-    /**
-     * Declares a Topic Exchange for flexible routing
-     */
+    @Value("${app.rabbitmq.order-routing-key-placed}")
+    private String orderRoutingKeyPlaced;
+
+    @Value("${app.rabbitmq.order-routing-key-cancelled}")
+    private String orderRoutingKeyCancelled;
+
+    @Value("${app.rabbitmq.order-routing-key-status-updated}")
+    private String orderRoutingKeyStatusUpdated;
+
+    @Value("${app.rabbitmq.order-routing-key-rated}")
+    private String orderRoutingKeyRated;
+
+
     @Bean
     public TopicExchange orderExchange() {
-        return new TopicExchange(ORDER_EXCHANGE);
+        return new TopicExchange(orderExchangeName); // Use injected value
     }
 
-    /**
-     * Queue for the Notification Service to consume events.
-     */
     @Bean
     public Queue notificationQueue() {
-        return new Queue(NOTIFICATION_QUEUE, true);
+        return new Queue(notificationQueueName, true); // Use injected value
     }
 
-    /**
-     * Queue for the Restaurant Service to consume events.
-     */
     @Bean
     public Queue restaurantQueue() {
-        return new Queue(RESTAURANT_QUEUE, true); // Durable queue
+        return new Queue(restaurantQueueName, true); // Use injected value
     }
 
-    /**
-     * Binds the Notification Queue to the Order Exchange.
-     * Notification service listens to all events under "order.event."
-     */
+    // Bindings for notification queue
     @Bean
-    public Binding notificationBinding(Queue notificationQueue, TopicExchange orderExchange) {
+    public Binding notificationBindingPlaced(Queue notificationQueue, TopicExchange orderExchange) {
         return BindingBuilder.bind(notificationQueue)
                 .to(orderExchange)
-                .with("order.event.#"); // Wildcard routing key for all order events
+                .with(orderRoutingKeyPlaced); // Use injected value
     }
 
-    /**
-     * Binds the Restaurant Queue to the Order Exchange for 'ORDER_PLACED' events.
-     */
+    @Bean
+    public Binding notificationBindingStatusUpdated(Queue notificationQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(notificationQueue)
+                .to(orderExchange)
+                .with(orderRoutingKeyStatusUpdated); // Use injected value
+    }
+
+    @Bean
+    public Binding notificationBindingCancelled(Queue notificationQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(notificationQueue)
+                .to(orderExchange)
+                .with(orderRoutingKeyCancelled); // Use injected value
+    }
+
+    @Bean
+    public Binding notificationBindingRated(Queue notificationQueue, TopicExchange orderExchange) {
+        return BindingBuilder.bind(notificationQueue)
+                .to(orderExchange)
+                .with(orderRoutingKeyRated); // Use injected value
+    }
+
+    // Bindings for restaurant queue
     @Bean
     public Binding restaurantBindingPlaced(Queue restaurantQueue, TopicExchange orderExchange) {
         return BindingBuilder.bind(restaurantQueue)
                 .to(orderExchange)
-                .with(ORDER_ROUTING_KEY_PLACED);
+                .with(orderRoutingKeyPlaced); // Use injected value
     }
 
-    /**
-     * Binds the Restaurant Queue to the Order Exchange for 'ORDER_STATUS_UPDATED' events.
-     */
     @Bean
     public Binding restaurantBindingStatusUpdated(Queue restaurantQueue, TopicExchange orderExchange) {
         return BindingBuilder.bind(restaurantQueue)
                 .to(orderExchange)
-                .with(ORDER_ROUTING_KEY_STATUS_UPDATED);
+                .with(orderRoutingKeyStatusUpdated); // Use injected value
     }
 
     @Bean
     public Binding restaurantBindingCancelled(Queue restaurantQueue, TopicExchange orderExchange) {
         return BindingBuilder.bind(restaurantQueue)
                 .to(orderExchange)
-                .with(ORDER_ROUTING_KEY_CANCELLED);
+                .with(orderRoutingKeyCancelled); // Use injected value
     }
 
     @Bean
     public Binding restaurantBindingRated(Queue restaurantQueue, TopicExchange orderExchange) {
         return BindingBuilder.bind(restaurantQueue)
                 .to(orderExchange)
-                .with(ORDER_ROUTING_KEY_RATED);
+                .with(orderRoutingKeyRated); // Use injected value
     }
 
 

@@ -1,3 +1,6 @@
+// NotificationService/src/main/java/com/ibra/notificationservice/service/rabbitmq/OrderEventListener.java
+// (No changes needed, already uses @Value for the queue name)
+
 package com.ibra.notificationservice.service.rabbitmq;
 
 import com.ibra.dto.OrderPlacedEvent;
@@ -13,14 +16,11 @@ public class OrderEventListener {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderEventListener.class);
 
-    private final NotificationService notificationService; // Autowire the new service
+    private final NotificationService notificationService;
 
-    // Option 1: Get queue name from application.yml (recommended for flexibility)
-    @Value("${app.rabbitmq.notification-queue-name:notification.order.queue}") // Default value if not found
+    // This already correctly gets the queue name from application.yml
+    @Value("${app.rabbitmq.notification-queue-name:notification.order.queue}")
     private String notificationQueueName;
-
-    // Option 2 (Alternative - if queue name is truly fixed and not configurable per environment):
-    // private static final String NOTIFICATION_QUEUE = "notification.order.queue";
 
 
     public OrderEventListener(NotificationService notificationService) {
@@ -33,7 +33,7 @@ public class OrderEventListener {
      * and configured in this service's application.yml.
      * @param event The OrderPlacedEvent consumed from RabbitMQ.
      */
-    @RabbitListener(queues = "${app.rabbitmq.notification-queue-name:notification.order.queue}") // Use SpEL to read from property
+    @RabbitListener(queues = "${app.rabbitmq.notification-queue-name}") // Reads from the property
     public void handleOrderEvent(OrderPlacedEvent event) {
         logger.info("Notification Service: Received order event: {} for order: {}", event.getEventType(), event.getOrderId());
 
