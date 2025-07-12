@@ -1,79 +1,169 @@
 sequenceDiagram
     participant Client
     participant Gateway as API Gateway<br/>:8080
+    participant SecurityFilters as Security Filter Chain
     participant Auth as Auth Service<br/>:8081
     participant Restaurant as Restaurant Service<br/>:8082
     participant Eureka as Discovery Server<br/>:8761
+    participant CommonDTO as Common DTOs
+    participant GlobalException as Global Exception Handler
 
-    Note over Client,Eureka: 1. User Registration & Login Flow
-    
-    Client->>Gateway: POST /auth/register<br/>{username, email, password, role}
-    Gateway->>Eureka: Discover auth-service location
-    Eureka-->>Gateway: Return auth-service URL
-    Gateway->>Auth: Forward registration request
-    Auth->>Auth: Hash password (BCrypt)
-    Auth->>Auth: Save user to database
-    Auth-->>Gateway: Registration successful
-    Gateway-->>Client: 201 Created
+    Note over Client,GlobalException: 1. Enhanced User Registration with Validation
 
-    Note over Client,Eureka: 2. JWT Token Generation
-    
-    Client->>Gateway: POST /auth/login<br/>{username, password}
-    Gateway->>Auth: Forward login request
-    Auth->>Auth: Validate credentials
-    Auth->>Auth: Generate JWT token<br/>(with roles & expiration)
-    Auth-->>Gateway: JWT token + user details
-    Gateway-->>Client: 200 OK<br/>{token, type: "Bearer", username, roles}
-
-    Note over Client,Eureka: 3. Protected Resource Access
-    
-    Client->>Gateway: GET /restaurants<br/>Authorization: Bearer [JWT]
-    Gateway->>Gateway: Extract JWT from header
-    Gateway->>Gateway: Validate JWT signature
-    Gateway->>Gateway: Extract user info & roles
-    Gateway->>Gateway: Check route permissions
-    Gateway->>Eureka: Discover restaurant-service location
-    Eureka-->>Gateway: Return restaurant-service URL
-    Gateway->>Restaurant: Forward request with headers:<br/>X-User-Id, X-User-Roles, X-Username
-    Restaurant->>Restaurant: Process request based on user context
-    Restaurant-->>Gateway: Restaurant data
-    Gateway-->>Client: 200 OK + Restaurant data
-
-    Note over Client,Eureka: 4. Role-Based Access Control Example
-    
-    Client->>Gateway: POST /restaurants<br/>Authorization: Bearer [JWT]<br/>{restaurant details}
-    Gateway->>Gateway: Validate JWT & extract roles
-    alt User has RESTAURANT_OWNER role
-        Gateway->>Restaurant: Forward request with user context
-        Restaurant->>Restaurant: Create restaurant<br/>(associate with user)
-        Restaurant-->>Gateway: Restaurant created
-        Gateway-->>Client: 201 Created
-    else User has CUSTOMER role
-        Gateway-->>Client: 403 Forbidden<br/>Access denied
+    Client->>Gateway: POST /auth/register<br/>{username, email, password, confirmPassword, role}
+    Gateway->>SecurityFilters: CORS Filter + Basic Security
+    SecurityFilters->>CommonDTO: Validate RegisterRequestDTO
+    alt Valid Request
+        Gateway->>Eureka: Discover auth-service location
+        Eureka-->>Gateway: Return auth-service URL
+        Gateway->>Auth: Forward registration request
+        Auth->>CommonDTO: Map to User entity
+        Auth->>Auth: Validate business rules<br/>(password strength, unique email)
+        Auth->>Auth: Hash password (BCrypt)
+        Auth->>Auth: Save user to database
+        Auth->>CommonDTO: Map to UserResponseDTO
+        Auth-->>Gateway: Registration successful
+        Gateway-->>Client: 201 Created<br/>{id, username, email, roles, createdAt}
+    else Invalid Request
+        CommonDTO->>GlobalException: Validation errors
+        GlobalException-->>Client: 400 Bad Request<br/>{timestamp, errors[], requestId}
     end
 
-    Note over Client,Eureka: 5. JWT Token Expiration Handling
-    
-    Client->>Gateway: GET /orders<br/>Authorization: Bearer [EXPIRED_JWT]
-    Gateway->>Gateway: Validate JWT
-    Gateway->>Gateway: Token expired
-    Gateway-->>Client: 401 Unauthorized<br/>Token expired
-    Client->>Gateway: POST /auth/login<br/>(Re-authenticate)
+    Note over Client,GlobalException: 2. Enhanced JWT Token Generation with Security Context
+
+    Client->>Gateway: POST /auth/login<br/>{username, password}
+    Gateway->>SecurityFilters: CORS Filter + Rate Limiting
+    SecurityFilters->>CommonDTO: Validate LoginRequestDTO
     Gateway->>Auth: Forward login request
+    Auth->>Auth: Validate credentials
+    Auth->>Auth: Check account status (active, locked)
+    Auth->>Auth: Generate JWT token<br/>(with userId, roles, permissions, expiration)
+    Auth->>CommonDTO: Create AuthResponseDTO
+    Auth-->>Gateway: JWT token + user details + permissions
+    Gateway-->>Client: 200 OK<br/>{token, type: "Bearer", expiresIn, user: {id, username, roles}, permissions[]}
+
+    Note over Client,GlobalException: 3. Enhanced Protected Resource Access with Security Filter Chain
+
+    Client->>Gateway: GET /restaurants<br/>Authorization: Bearer [JWT]<br/>X-Request-ID: req-123
+    Gateway->>SecurityFilters: Security Filter Chain
+    SecurityFilters->>SecurityFilters: 1. CORS Filter
+    SecurityFilters->>SecurityFilters: 2. JWT Authentication Filter
+    SecurityFilters->>SecurityFilters: Extract JWT from header
+    SecurityFilters->>SecurityFilters: Validate JWT signature & expiration
+    SecurityFilters->>SecurityFilters: Extract user context (userId, roles, permissions)
+    SecurityFilters->>SecurityFilters: 3. Header Filter
+    SecurityFilters->>SecurityFilters: Add X-User-Id: 123
+    SecurityFilters->>SecurityFilters: Add X-Username: john.doe
+    SecurityFilters->>SecurityFilters: Add X-User-Roles: ROLE_CUSTOMER
+    SecurityFilters->>SecurityFilters: Add X-Request-ID: req-123
+    SecurityFilters->>SecurityFilters: 4. Authorization Filter
+    SecurityFilters->>SecurityFilters: Check permissions (READ_RESTAURANTS)
+
+    alt Valid JWT & Permissions
+        Gateway->>Eureka: Discover restaurant-service instances
+        Eureka-->>Gateway: Return available instances
+        Gateway->>Restaurant: Forward request with enhanced headers
+        Restaurant->>CommonDTO: Use RestaurantResponseDTO
+        Restaurant->>Restaurant: Process request with user context
+        Restaurant->>CommonDTO: Map to RestaurantListDTO
+        Restaurant-->>Gateway: Restaurant data
+        Gateway-->>Client: 200 OK + Restaurant data
+    else Invalid JWT
+        SecurityFilters->>GlobalException: TokenExpiredException
+        GlobalException-->>Client: 401 Unauthorized<br/>{timestamp, error: "JWT token expired", requestId}
+    else Insufficient Permissions
+        SecurityFilters->>GlobalException: InsufficientPermissionException
+        GlobalException-->>Client: 403 Forbidden<br/>{timestamp, error: "Access denied", requestId}
+    end
+
+    Note over Client,GlobalException: 4. Enhanced Role-Based Access Control with Permission Validation
+
+    Client->>Gateway: POST /restaurants<br/>Authorization: Bearer [JWT]<br/>{restaurant details}
+    Gateway->>SecurityFilters: Security Filter Chain
+    SecurityFilters->>SecurityFilters: Validate JWT & extract user context
+    SecurityFilters->>SecurityFilters: Check CREATE_RESTAURANTS permission
+    SecurityFilters->>CommonDTO: Validate CreateRestaurantRequestDTO
+
+    alt User has CREATE_RESTAURANTS permission
+        Gateway->>Restaurant: Forward request with user context
+        Restaurant->>CommonDTO: Map to Restaurant entity
+        Restaurant->>Restaurant: Create restaurant (associate with user)
+        Restaurant->>CommonDTO: Map to RestaurantResponseDTO
+        Restaurant-->>Gateway: Restaurant created
+        Gateway-->>Client: 201 Created<br/>{id, name, ownerId, createdAt}
+    else User lacks permission
+        SecurityFilters->>GlobalException: InsufficientPermissionException
+        GlobalException-->>Client: 403 Forbidden<br/>{"error": "CREATE_RESTAURANTS permission required"}
+    else Invalid request data
+        CommonDTO->>GlobalException: Validation errors
+        GlobalException-->>Client: 400 Bad Request<br/>{"errors": [{"field": "name", "message": "Required"}]}
+    end
+
+    Note over Client,GlobalException: 5. Enhanced JWT Token Expiration & Refresh Handling
+
+    Client->>Gateway: GET /orders<br/>Authorization: Bearer [EXPIRED_JWT]
+    Gateway->>SecurityFilters: JWT Authentication Filter
+    SecurityFilters->>SecurityFilters: Validate JWT
+    SecurityFilters->>SecurityFilters: Token expired
+    SecurityFilters->>GlobalException: TokenExpiredException
+    GlobalException-->>Client: 401 Unauthorized<br/>{"error": "Token expired", "canRefresh": true}
+
+    Client->>Gateway: POST /auth/refresh<br/>Authorization: Bearer [REFRESH_TOKEN]
+    Gateway->>Auth: Forward refresh request
+    Auth->>Auth: Validate refresh token
+    Auth->>Auth: Generate new JWT token
+    Auth->>CommonDTO: Create AuthResponseDTO
     Auth-->>Gateway: New JWT token
-    Gateway-->>Client: New token
+    Gateway-->>Client: New token with extended expiration
+
     Client->>Gateway: GET /orders<br/>Authorization: Bearer [NEW_JWT]
-    Gateway->>Gateway: Validate new JWT
-    Gateway->>Order: Forward request
+    Gateway->>SecurityFilters: Validate new JWT
+    SecurityFilters->>SecurityFilters: Token valid, extract user context
+    Gateway->>Order: Forward request with user headers
+    Order->>CommonDTO: Use OrderResponseDTO
     Order-->>Gateway: Order data
     Gateway-->>Client: 200 OK + Order data
 
-    Note over Client,Eureka: 6. Service Discovery & Load Balancing
-    
-    Client->>Gateway: GET /restaurants/1/menu
+    Note over Client,GlobalException: 6. Enhanced Service Discovery with Request Tracing
+
+    Client->>Gateway: GET /restaurants/1/menu<br/>X-Request-ID: req-456
+    Gateway->>SecurityFilters: Security Filter Chain
+    SecurityFilters->>SecurityFilters: Process security + add tracing headers
     Gateway->>Eureka: Discover restaurant-service instances
-    Eureka-->>Gateway: Return available instances
-    Gateway->>Gateway: Load balance request
-    Gateway->>Restaurant: Forward to selected instance
-    Restaurant-->>Gateway: Menu data
-    Gateway-->>Client: Menu data
+    Eureka-->>Gateway: Return available instances with health status
+    Gateway->>Gateway: Load balance request (round-robin)
+    Gateway->>Restaurant: Forward to selected instance<br/>Headers: X-User-Id, X-Request-ID, X-Trace-ID
+    Restaurant->>CommonDTO: Use MenuResponseDTO
+    Restaurant->>Restaurant: Process with full request context
+    Restaurant->>CommonDTO: Map to MenuListDTO
+    Restaurant-->>Gateway: Menu data with metadata
+    Gateway-->>Client: Menu data + response metadata
+
+    Note over Client,GlobalException: 7. Security Exception Handling with Global Error Management
+
+    Client->>Gateway: POST /restaurants<br/>Authorization: Bearer [MALFORMED_JWT]
+    Gateway->>SecurityFilters: JWT Authentication Filter
+    SecurityFilters->>SecurityFilters: Attempt to parse JWT
+    SecurityFilters->>GlobalException: InvalidTokenException
+    GlobalException->>GlobalException: Log security event
+    GlobalException->>GlobalException: Format standardized error response
+    GlobalException-->>Client: 401 Unauthorized<br/>{"timestamp": "2024-01-15T10:30:00Z", "error": "Invalid JWT format", "requestId": "req-789"}
+
+    Client->>Gateway: GET /admin/users<br/>Authorization: Bearer [CUSTOMER_JWT]
+    Gateway->>SecurityFilters: Authorization Filter
+    SecurityFilters->>SecurityFilters: Check ADMIN_ACCESS permission
+    SecurityFilters->>GlobalException: InsufficientPermissionException
+    GlobalException->>GlobalException: Log authorization failure
+    GlobalException-->>Client: 403 Forbidden<br/>{"error": "Admin access required", "requiredPermission": "ADMIN_ACCESS"}
+
+    Note over Client,GlobalException: 8. Request Correlation and Audit Trail
+
+    Client->>Gateway: Any Protected Request<br/>X-Request-ID: req-correlate-123
+    Gateway->>SecurityFilters: Security Filter Chain
+    SecurityFilters->>SecurityFilters: Generate/validate correlation ID
+    SecurityFilters->>SecurityFilters: Log authentication event
+    SecurityFilters->>SecurityFilters: Add audit headers
+    Gateway->>Restaurant: Forward with full context<br/>X-User-Id, X-Request-ID, X-Correlation-ID, X-Audit-Trail
+    Restaurant->>Restaurant: Process with audit logging
+    Restaurant-->>Gateway: Response with audit metadata
+    Gateway-->>Client: Response with correlation headers

@@ -1,0 +1,92 @@
+sequenceDiagram
+    participant C as Customer
+    participant G as API Gateway
+    participant A as Auth Service
+    participant R as Restaurant Service
+    participant O as Order Service
+    participant RMQ as RabbitMQ
+    participant N as Notification Service
+
+    Note over C,N: User Registration Flow
+    C->>G: POST /auth/register
+    G->>A: Forward registration request
+    A->>A: Create user account
+    A->>G: Registration successful
+    G->>C: User created
+
+    Note over C,N: User Login Flow
+    C->>G: POST /auth/login
+    G->>A: Forward login request
+    A->>A: Validate credentials
+    A->>A: Generate JWT token
+    A->>G: Return JWT token
+    G->>C: Return JWT token
+
+    Note over C,N: Browse Restaurants Flow
+    C->>G: GET /restaurants (with JWT)
+    G->>G: Validate JWT token
+    G->>G: Extract user headers (X-User-Id, X-User-Role, X-Username)
+    G->>R: Forward request with headers
+    R->>R: Use common security filter
+    R->>R: Authorize based on headers
+    R->>R: Get restaurant list
+    R->>G: Return restaurants
+    G->>C: Return restaurants
+
+    Note over C,N: Order Placement Flow
+    C->>G: POST /orders (with JWT)
+    G->>G: Validate JWT token
+    G->>G: Extract user headers
+    G->>O: Forward request with headers
+    O->>O: Use common security filter
+    O->>O: Authorize based on headers
+    O->>R: GET /restaurants/{id} (with headers)
+    R->>R: Validate restaurant exists
+    R->>O: Return restaurant details
+    O->>O: Create order
+    O->>RMQ: Publish OrderPlacedEvent
+    O->>G: Return order confirmation
+    G->>C: Order placed successfully
+
+    Note over C,N: Event Processing Flow
+    RMQ->>R: Consume OrderPlacedEvent
+    R->>R: Process order
+    R->>R: Update order status to "PREPARING"
+    
+    RMQ->>N: Consume OrderPlacedEvent
+    N->>R: GET /restaurants/{id} (fetch details)
+    R->>N: Return restaurant details
+    N->>N: Compose email notification
+    N->>C: Send email notification
+
+    Note over C,N: Order Status Check Flow
+    C->>G: GET /orders/my-orders (with JWT)
+    G->>G: Validate JWT token
+    G->>G: Extract user headers
+    G->>O: Forward request with headers
+    O->>O: Use common security filter
+    O->>O: Get user's orders
+    O->>G: Return order history
+    G->>C: Return order history
+
+    Note over C,N: Restaurant Owner Flow
+    participant RO as Restaurant Owner
+    RO->>G: POST /restaurants (with JWT)
+    G->>G: Validate JWT token
+    G->>G: Extract headers (role=RESTAURANT_OWNER)
+    G->>R: Forward request with headers
+    R->>R: Authorize RESTAURANT_OWNER role
+    R->>R: Create restaurant
+    R->>G: Restaurant created
+    G->>RO: Success response
+
+    Note over C,N: Admin Flow
+    participant AD as Admin
+    AD->>G: GET /auth/users (with JWT)
+    G->>G: Validate JWT token
+    G->>G: Extract headers (role=ADMIN)
+    G->>A: Forward request with headers
+    A->>A: Authorize ADMIN role
+    A->>A: Get all users
+    A->>G: Return users list
+    G->>AD: Return users list
